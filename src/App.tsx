@@ -43,6 +43,7 @@ const FormFlow: React.FC<FormFlowProps> = ({
     setIsCurrentStepValid(isValid);
   };
   
+  
   // Show thank you page if form is submitted and meeting is booked
   if (state.meetingBooked && state.formSubmitted) {
     return (
@@ -122,6 +123,7 @@ const FormFlow: React.FC<FormFlowProps> = ({
       setStep(state.step - 1);
     }
   };
+  
 
   const renderNavigation = () => {
     if (state.step === 2 && currentSubSteps && state.currentSubStep === currentSubSteps.length - 1) {
@@ -163,6 +165,31 @@ const FormFlow: React.FC<FormFlowProps> = ({
       description = currentSubStep.description;
     }
   }
+  
+  // Handle Enter key for page advancement
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if Enter key is pressed
+      if (e.key === 'Enter') {
+        // Don't advance if we're in a select dropdown or if validation fails
+        const activeElement = document.activeElement as HTMLElement;
+        const isSelectOpen = activeElement?.tagName === 'SELECT';
+        
+        if (!isSelectOpen && isCurrentStepValid) {
+          // Check if we're at the last substep (Calendly booking)
+          if (state.step === 2 && currentSubSteps && state.currentSubStep === currentSubSteps.length - 1) {
+            // Don't advance if at the Calendly booking step
+            return;
+          }
+          
+          handleNext();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCurrentStepValid, state.step, state.currentSubStep, currentSubSteps, handleNext]);
   
   return (
     <div className="flex items-center justify-center p-4">

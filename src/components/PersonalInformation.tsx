@@ -1,13 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useFormStore } from '../store/formStore';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import FileUpload from './FileUpload';
-import { Copy } from 'lucide-react';
-import { useState } from 'react';
 
 const referralSources = [
   'Direct Mail',
@@ -32,12 +29,62 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({ onValidationC
   const { state, setPersonalInfo } = useFormStore();
   const { personalInfo } = state;
   
+  // Refs for field navigation
+  const firstNameRef = useRef<HTMLInputElement>(null);
+  const lastNameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const referralSourceRef = useRef<HTMLButtonElement>(null);
+  
+  // Email validation regex
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Format phone number
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-digit characters
+    const phoneNumber = value.replace(/\D/g, '');
+    
+    // Format as (xxx) xxx-xxxx
+    if (phoneNumber.length <= 3) {
+      return phoneNumber;
+    } else if (phoneNumber.length <= 6) {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+    } else {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+    }
+  };
+
+  // Handle phone input change
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, '');
+    if (rawValue.length <= 10) {
+      const formatted = formatPhoneNumber(rawValue);
+      setPersonalInfo({ phone: formatted });
+    }
+  };
+
+  // Handle Enter key navigation between fields
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, nextRef: React.RefObject<any>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      nextRef.current?.focus();
+      // For Select component, open the dropdown
+      if (nextRef === referralSourceRef) {
+        nextRef.current?.click();
+      }
+    }
+  };
+  
   useEffect(() => {
     const hasUploadOption = personalInfo.textUploadLink || (personalInfo.uploadedImages && personalInfo.uploadedImages.length > 0);
+    const phoneDigits = personalInfo.phone.replace(/\D/g, '');
     const isValid = personalInfo.firstName.trim().length > 0 &&
       personalInfo.lastName.trim().length > 0 &&
-      personalInfo.email.trim().length > 0 &&
-      personalInfo.phone.trim().length > 0 &&
+      validateEmail(personalInfo.email) &&
+      phoneDigits.length === 10 &&
       hasUploadOption;
     
     console.log('PersonalInfo - Fields:', {
@@ -60,8 +107,11 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({ onValidationC
           <Label htmlFor="first-name">First Name</Label>
           <Input
             id="first-name"
+            ref={firstNameRef}
             value={personalInfo.firstName}
             onChange={(e) => setPersonalInfo({ firstName: e.target.value })}
+            onKeyDown={(e) => handleKeyDown(e, lastNameRef)}
+            placeholder="John"
             className="mt-1"
           />
           {state.errors.firstName && (
@@ -72,8 +122,11 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({ onValidationC
           <Label htmlFor="last-name">Last Name</Label>
           <Input
             id="last-name"
+            ref={lastNameRef}
             value={personalInfo.lastName}
             onChange={(e) => setPersonalInfo({ lastName: e.target.value })}
+            onKeyDown={(e) => handleKeyDown(e, emailRef)}
+            placeholder="Doe"
             className="mt-1"
           />
           {state.errors.lastName && (
@@ -87,12 +140,18 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({ onValidationC
         <Input
           id="email"
           type="email"
+          ref={emailRef}
           value={personalInfo.email}
           onChange={(e) => setPersonalInfo({ email: e.target.value })}
+          onKeyDown={(e) => handleKeyDown(e, phoneRef)}
+          placeholder="john.doe@example.com"
           className="mt-1"
         />
         {state.errors.email && (
           <p className="text-red-500 text-sm mt-1">{state.errors.email}</p>
+        )}
+        {personalInfo.email && !validateEmail(personalInfo.email) && (
+          <p className="text-red-500 text-sm mt-1">Please enter a valid email address</p>
         )}
       </div>
       
@@ -101,12 +160,18 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({ onValidationC
         <Input
           id="phone"
           type="tel"
+          ref={phoneRef}
           value={personalInfo.phone}
-          onChange={(e) => setPersonalInfo({ phone: e.target.value })}
+          onChange={handlePhoneChange}
+          onKeyDown={(e) => handleKeyDown(e, referralSourceRef)}
+          placeholder="(555) 123-4567"
           className="mt-1"
         />
         {state.errors.phone && (
           <p className="text-red-500 text-sm mt-1">{state.errors.phone}</p>
+        )}
+        {personalInfo.phone && personalInfo.phone.replace(/\D/g, '').length > 0 && personalInfo.phone.replace(/\D/g, '').length < 10 && (
+          <p className="text-red-500 text-sm mt-1">Phone number must be 10 digits</p>
         )}
       </div>
 
@@ -116,7 +181,7 @@ const PersonalInformation: React.FC<PersonalInformationProps> = ({ onValidationC
           value={personalInfo.referralSource || ''}
           onValueChange={(value) => setPersonalInfo({ referralSource: value })}
         >
-          <SelectTrigger id="referral-source" className="mt-1">
+          <SelectTrigger id="referral-source" ref={referralSourceRef} className="mt-1">
             <SelectValue placeholder="Select how you found us" />
           </SelectTrigger>
           <SelectContent>

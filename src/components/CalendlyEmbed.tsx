@@ -79,8 +79,8 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
         // Ensure proper iframe height
         const calendlyFrame = containerRef.current.querySelector('iframe');
         if (calendlyFrame) {
-          calendlyFrame.style.height = '700px';
-          calendlyFrame.style.minHeight = '700px';
+          calendlyFrame.style.height = '100%';
+          calendlyFrame.style.minHeight = '500px';
           calendlyFrame.style.width = '100%';
           calendlyFrame.style.border = 'none';
         }
@@ -136,9 +136,8 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
         style={{
           position: 'relative',
           width: '100%',
-          height: 'calc(100vh - 160px)',
-          minHeight: '600px',
-          overflow: 'hidden'
+          height: '100%',
+          minHeight: '500px'
         }}
       />
     </div>
