@@ -43,27 +43,6 @@ const FormFlow: React.FC<FormFlowProps> = ({
     setIsCurrentStepValid(isValid);
   };
   
-  
-  // Show thank you page if form is submitted and meeting is booked
-  if (state.meetingBooked && state.formSubmitted) {
-    return (
-      <div className="flex items-center justify-center p-4">
-        <ThankYou onStartOver={handleBackToStart} />
-      </div>
-    );
-  }
-  
-  // Find the current step
-  const currentStep = formSteps.find((_, index) => index === state.step);
-  
-  if (!isStarted) {
-    return (
-      <div className="flex items-center justify-center p-4">
-        <StartPage onStart={() => setIsStarted(true)} />
-      </div>
-    );
-  }
-  
   // Determine which component to render based on the current step
   let StepComponent;
   let currentSubSteps;
@@ -97,10 +76,6 @@ const FormFlow: React.FC<FormFlowProps> = ({
     }
   }
   
-  if (!currentStep || !StepComponent) {
-    return null;
-  }
-
   const handleNext = () => {
     if (state.step === 2 && currentSubSteps) {
       if (state.currentSubStep < currentSubSteps.length - 1) {
@@ -123,6 +98,55 @@ const FormFlow: React.FC<FormFlowProps> = ({
       setStep(state.step - 1);
     }
   };
+  
+  // Handle Enter key for page advancement - MUST be before any conditional returns
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if Enter key is pressed
+      if (e.key === 'Enter') {
+        // Don't advance if we're in a select dropdown or if validation fails
+        const activeElement = document.activeElement as HTMLElement;
+        const isSelectOpen = activeElement?.tagName === 'SELECT';
+        
+        if (!isSelectOpen && isCurrentStepValid) {
+          // Check if we're at the last substep (Calendly booking)
+          if (state.step === 2 && currentSubSteps && state.currentSubStep === currentSubSteps.length - 1) {
+            // Don't advance if at the Calendly booking step
+            return;
+          }
+          
+          handleNext();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCurrentStepValid, state.step, state.currentSubStep, currentSubSteps, handleNext]);
+  
+  // Show thank you page if form is submitted and meeting is booked
+  if (state.meetingBooked && state.formSubmitted) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <ThankYou onStartOver={handleBackToStart} />
+      </div>
+    );
+  }
+  
+  // Find the current step
+  const currentStep = formSteps.find((_, index) => index === state.step);
+  
+  if (!isStarted) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <StartPage onStart={() => setIsStarted(true)} />
+      </div>
+    );
+  }
+  
+  if (!currentStep || !StepComponent) {
+    return null;
+  }
   
 
   const renderNavigation = () => {
@@ -165,31 +189,6 @@ const FormFlow: React.FC<FormFlowProps> = ({
       description = currentSubStep.description;
     }
   }
-  
-  // Handle Enter key for page advancement
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Check if Enter key is pressed
-      if (e.key === 'Enter') {
-        // Don't advance if we're in a select dropdown or if validation fails
-        const activeElement = document.activeElement as HTMLElement;
-        const isSelectOpen = activeElement?.tagName === 'SELECT';
-        
-        if (!isSelectOpen && isCurrentStepValid) {
-          // Check if we're at the last substep (Calendly booking)
-          if (state.step === 2 && currentSubSteps && state.currentSubStep === currentSubSteps.length - 1) {
-            // Don't advance if at the Calendly booking step
-            return;
-          }
-          
-          handleNext();
-        }
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isCurrentStepValid, state.step, state.currentSubStep, currentSubSteps, handleNext]);
   
   return (
     <div className="flex items-center justify-center p-4">
