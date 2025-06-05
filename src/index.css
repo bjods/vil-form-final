@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Custom Properties for Widget Customization */
+:root {
+  /* Layout */
+  --widget-width: 700px;
+  --widget-margin: 2rem auto;
+  --widget-height: 500px;
+  --widget-height-fallback: 500px;
+  --widget-max-height: 90vh;
+  
+  /* Appearance */
+  --widget-background: rgba(255, 255, 255, 0.95);
+  --widget-border-radius: 8px;
+  --widget-backdrop-filter: none;
+  --widget-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  
+  /* Inner Spacing */
+  --widget-header-padding: 1.25rem 1.75rem;
+  --widget-content-padding: 1.75rem;
+  --widget-footer-padding: 1.25rem 1.75rem;
+}
+
+/* Mobile Responsive Defaults */
+@media (max-width: 640px) {
+  :root {
+    --widget-width: 100%;
+    --widget-margin: 0;
+    --widget-height: 100dvh;
+    --widget-height-fallback: 100vh;
+    --widget-min-height: 100vh;
+    --widget-max-height: -webkit-fill-available;
+    --widget-border-radius: 0;
+    --widget-header-padding: 1rem 1.5rem;
+    --widget-content-padding: 1.5rem;
+    --widget-footer-padding: 1rem 1.5rem;
+  }
+  
+  /* Fix iOS Safari viewport height */
+  .form-card {
+    height: var(--widget-height-fallback);
+    height: var(--widget-height);
+    min-height: var(--widget-min-height);
+    max-height: var(--widget-max-height);
+  }
+}
+
+/* Calendly iframe fixes */
+.calendly-inline-widget {
+  position: relative !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+.calendly-inline-widget iframe {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+/* Hide scrollbars in the iframe */
+.calendly-inline-widget iframe::-webkit-scrollbar {
+  display: none;
+}
+
+.calendly-inline-widget iframe {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    --primary: 48 100% 50%;
+    --primary-foreground: 0 0% 10%;
+  }
+}
+
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Custom scrollbar styles */
+  .overflow-y-auto::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .overflow-y-auto::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .overflow-y-auto::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+  }
+
+  .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
