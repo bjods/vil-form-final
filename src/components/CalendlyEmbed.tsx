@@ -20,6 +20,16 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const initializationAttempted = useRef(false);
 
+  // Validate Calendly URL format
+  const isValidCalendlyUrl = (url: string): boolean => {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname === 'calendly.com' && urlObj.pathname.length > 1;
+    } catch {
+      return false;
+    }
+  };
+
   // Handle Calendly events
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
@@ -53,28 +63,46 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
   }, [onEventScheduled]);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
+    let retryCount = 0;
+    const maxRetries = 10;
     
-    const initializeCalendly = () => {
+    // Validate URL first
+    if (!isValidCalendlyUrl(url)) {
+      setError('Invalid Calendly URL format. Please check the URL.');
+      setIsLoading(false);
+      return;
+    }
+    
+    const waitForCalendly = (): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        const checkCalendly = () => {
+          if (window.Calendly && typeof window.Calendly.initInlineWidget === 'function') {
+            console.log('Calendly is ready!');
+            resolve();
+          } else if (retryCount < maxRetries) {
+            retryCount++;
+            console.log(`Waiting for Calendly... attempt ${retryCount}/${maxRetries}`);
+            setTimeout(checkCalendly, 200);
+          } else {
+            reject(new Error('Calendly failed to load after multiple attempts'));
+          }
+        };
+        checkCalendly();
+      });
+    };
+    
+    const initializeCalendly = async () => {
       console.log('Attempting to initialize Calendly...');
       
       if (!containerRef.current) {
         console.log('Container ref not ready');
-        return false;
-      }
-
-      // Check if Calendly is available
-      if (!window.Calendly) {
-        console.log('Calendly not loaded');
-        return false;
-      }
-
-      if (!window.Calendly.initInlineWidget) {
-        console.log('Calendly widget not ready');
-        return false;
+        throw new Error('Container not ready');
       }
 
       try {
+        // Wait for Calendly to be fully ready
+        await waitForCalendly();
+        
         console.log('Initializing Calendly widget with URL:', url);
         
         // Clear any existing content
@@ -98,40 +126,38 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
           prefill: Object.keys(prefillData).length > 0 ? prefillData : undefined
         });
         
+        console.log('Calendly widget initialized successfully');
         setIsLoading(false);
         setError(null);
-        return true;
         
       } catch (error) {
         console.error('Calendly initialization error:', error);
         setError('Failed to load Calendly widget. Please refresh the page.');
         setIsLoading(false);
-        return false;
+        throw error;
       }
     };
 
-    const loadCalendlyScript = () => {
-      return new Promise<void>((resolve, reject) => {
+    const loadCalendlyScript = (): Promise<void> => {
+      return new Promise((resolve, reject) => {
         // Check if script already exists
         const existingScript = document.querySelector('script[src*="calendly.com"]');
         if (existingScript) {
-          if (window.Calendly) {
-            resolve();
-          } else {
-            // Script exists but not loaded yet
-            existingScript.addEventListener('load', () => resolve());
-            existingScript.addEventListener('error', reject);
-          }
+          console.log('Calendly script already exists');
+          // Give it more time to initialize
+          setTimeout(() => resolve(), 500);
           return;
         }
 
+        console.log('Loading Calendly script...');
         const script = document.createElement('script');
         script.src = 'https://assets.calendly.com/assets/external/widget.js';
         script.async = true;
         
         script.onload = () => {
           console.log('Calendly script loaded successfully');
-          resolve();
+          // Give Calendly time to initialize its global object
+          setTimeout(() => resolve(), 1000);
         };
         
         script.onerror = (error) => {
@@ -151,24 +177,11 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
       initializationAttempted.current = true;
       
       try {
-        if (!window.Calendly) {
-          console.log('Loading Calendly script...');
-          await loadCalendlyScript();
-        }
-        
-        // Wait a bit for Calendly to fully initialize
-        timeoutId = setTimeout(() => {
-          const success = initializeCalendly();
-          if (!success) {
-            // Retry once after a delay
-            setTimeout(() => {
-              initializeCalendly();
-            }, 1000);
-          }
-        }, 100);
+        await loadCalendlyScript();
+        await initializeCalendly();
         
       } catch (error) {
-        console.error('Error loading Calendly:', error);
+        console.error('Error initializing Calendly:', error);
         setError('Unable to load Calendly. Please check your internet connection and try again.');
         setIsLoading(false);
       }
@@ -177,9 +190,7 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
     initialize();
 
     return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
+      // Cleanup if needed
     };
   }, [url, prefill]);
 
@@ -193,6 +204,11 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
               setError(null);
               setIsLoading(true);
               initializationAttempted.current = false;
+              // Remove existing script to force reload
+              const existingScript = document.querySelector('script[src*="calendly.com"]');
+              if (existingScript) {
+                existingScript.remove();
+              }
               window.location.reload();
             }}
             className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
