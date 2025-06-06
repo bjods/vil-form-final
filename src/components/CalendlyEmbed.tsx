@@ -60,15 +60,27 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
 
       try {
         console.log('Initializing Calendly widget with URL:', url);
-        console.log('Prefill data:', prefill);
+        console.log('Raw prefill data:', prefill);
+        
+        // Create clean prefill object - only include non-empty strings
+        const cleanPrefill: Record<string, string> = {};
+        
+        if (prefill.name && typeof prefill.name === 'string' && prefill.name.trim()) {
+          cleanPrefill.name = prefill.name.trim();
+        }
+        
+        if (prefill.email && typeof prefill.email === 'string' && prefill.email.trim()) {
+          cleanPrefill.email = prefill.email.trim();
+        }
+        
+        console.log('Clean prefill data:', cleanPrefill);
+        
+        // Initialize with minimal parameters
+        console.log('Attempting to initialize with minimal config...');
         
         window.Calendly.initInlineWidget({
           url: url,
-          parentElement: containerRef.current,
-          prefill: {
-            name: prefill.name || '',
-            email: prefill.email || ''
-          }
+          parentElement: containerRef.current
         });
         
         setIsLoading(false);
@@ -78,9 +90,6 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
         setIsLoading(false);
       }
     };
-
-    // Check if script already exists
-    const existingScript = document.querySelector('script[src*="calendly.com"]');
 
     if (window.Calendly) {
       initializeCalendly();
@@ -97,6 +106,7 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
       };
       
       script.onerror = (error) => {
+        console.error('Failed to load Calendly script:', error);
         setIsLoading(false);
       };
       

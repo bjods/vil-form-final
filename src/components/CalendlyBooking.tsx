@@ -30,10 +30,18 @@ const CalendlyBooking: React.FC = () => {
     }
   };
   
-  const prefillData = useMemo(() => ({
-    name: `${personalInfo.firstName} ${personalInfo.lastName}`.trim(),
-    email: personalInfo.email
-  }), [personalInfo]);
+  const prefillData = useMemo(() => {
+    const firstName = personalInfo.firstName || '';
+    const lastName = personalInfo.lastName || '';
+    const email = personalInfo.email || '';
+    
+    console.log('PersonalInfo for Calendly:', { firstName, lastName, email });
+    
+    return {
+      name: `${firstName} ${lastName}`.trim(),
+      email: email
+    };
+  }, [personalInfo]);
 
   return (
     <div className="w-full h-full">
