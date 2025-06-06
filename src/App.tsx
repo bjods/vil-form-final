@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useFormStore } from './store/formStore';
+import { FormState } from './types/form';
 import FormCard from './components/FormCard';
 import { Button } from './components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -13,6 +14,7 @@ import OtherForm from './components/OtherForm';
 import OutOfServiceArea from './components/OutOfServiceArea';
 import StartPage from './components/StartPage';
 import ThankYou from './components/ThankYou';
+import SubmissionLoading from './components/SubmissionLoading';
 import UploadPage from './components/UploadPage';
 import UploadComplete from './components/UploadComplete';
 import { formSteps } from './data/formSteps';
@@ -123,6 +125,15 @@ const FormFlow: React.FC<FormFlowProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isCurrentStepValid, state.step, state.currentSubStep, currentSubSteps, handleNext]);
+  
+  // Show loading screen while submitting
+  if (state.meetingBooked && !state.formSubmitted) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <SubmissionLoading />
+      </div>
+    );
+  }
   
   // Show thank you page if form is submitted and meeting is booked
   if (state.meetingBooked && state.formSubmitted) {

@@ -53,54 +53,38 @@ export async function submitToZapier(formData: FormState): Promise<boolean> {
     submitted_at: new Date().toISOString()
   };
 
-  const maxRetries = 3;
-  let attempt = 0;
-
-  console.log('Starting form submission...');
+  console.log('Submitting form to webhook...');
+  console.log('Payload:', payload);
   
-  while (attempt < maxRetries) {
-    try {
-      console.log(`Attempt ${attempt + 1} of ${maxRetries}...`);
-      console.log('Payload:', payload);
-      
-      const response = await fetch('https://eotwpuhp53a1tsu.m.pipedream.net', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+  try {
+    const response = await fetch('https://eotwpuhp53a1tsu.m.pipedream.net', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
+    console.log('Response status:', response.status);
 
-      // Check if response is truly successful
-      if (response.ok && response.status === 200) {
-        try {
-          const data = await response.json();
-          console.log('Form submitted successfully:', data);
-          return true; // Exit on success
-        } catch (jsonError) {
-          console.log('Response received but not JSON:', jsonError);
-          return true; // Still success even if response isn't JSON
-        }
+    // Check if response is successful
+    if (response.ok) {
+      try {
+        const data = await response.json();
+        console.log('Form submitted successfully:', data);
+      } catch (jsonError) {
+        console.log('Response received but not JSON:', jsonError);
       }
-
-      throw new Error(`HTTP ${response.status}`);
-    } catch (error) {
-      console.error(`Attempt ${attempt + 1} failed:`, error);
-      attempt++;
-
-      if (attempt === maxRetries) {
-        console.warn('Form submission failed after 3 attempts, but proceeding anyway');
-        return true;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      return true;
     }
-  }
 
-  return true;
+    console.error(`HTTP ${response.status} error`);
+    return false;
+  } catch (error) {
+    console.error('Form submission failed:', error);
+    // Return true to allow user to proceed even if webhook fails
+    return true;
+  }
 }
 
 // Send file upload data to Zapier webhook

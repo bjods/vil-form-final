@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useFormStore } from '../store/formStore';
 import CalendlyEmbed from './CalendlyEmbed';
 
@@ -6,27 +6,22 @@ const CALENDLY_URL = 'https://calendly.com/brad-cazno/discovery-call';
 
 const CalendlyBooking: React.FC = () => {
   const { state, setMeetingBooked, submitForm } = useFormStore();
-  const { personalInfo, formSubmitted } = state;
+  const { personalInfo, formSubmitted, isSubmitting } = state;
   
   const handleEventScheduled = async () => {
-    try {
-      console.log('Meeting scheduled, attempting form submission...');
-
-      // Submit form if not already submitted
-      if (!formSubmitted) {
-        const success = await submitForm();
-        console.log('Form submission result:', success);
+    console.log('Meeting scheduled, marking as booked...');
+    
+    // First mark meeting as booked to trigger loading screen
+    setMeetingBooked(true);
+    
+    // Then submit form if not already submitted
+    if (!formSubmitted && !isSubmitting) {
+      try {
+        console.log('Submitting form...');
+        await submitForm();
+      } catch (error) {
+        console.error('Error submitting form:', error);
       }
-      
-      // Force state update with a slight delay to ensure proper rendering
-      setTimeout(() => {
-        console.log('Setting meeting booked to true');
-        setMeetingBooked(true);
-      }, 100);
-
-    } catch (error) {
-      console.error('Error handling meeting booking:', error);
-      setMeetingBooked(true);
     }
   };
   

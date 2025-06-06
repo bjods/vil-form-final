@@ -20,7 +20,7 @@ interface FormStore {
   setProjectSuccessCriteria: (criteria: string) => void;
   setPersonalInfo: (info: Partial<FormState['personalInfo']>) => void;
   requestUploadLink: () => Promise<string | null>;
-  submitForm: () => Promise<void>;
+  submitForm: () => Promise<boolean>;
   setMeetingBooked: (booked: boolean) => void;
   resetForm: () => void;
   clearErrors: () => void;
@@ -56,6 +56,8 @@ const initialState: FormState = {
   uploadLinkGenerated: false,
   formSubmitted: false,
   meetingBooked: false,
+  isSubmitting: false,
+  submissionError: null,
   errors: {},
   touched: {}
 };
@@ -108,33 +110,53 @@ export const useFormStore = create<FormStore>((set, get) => ({
 
   submitForm: async () => {
     const { state } = get();
-    console.log('Attempting to submit form with data:', state);
+    
+    // Prevent multiple submissions
+    if (state.formSubmitted || state.isSubmitting) {
+      console.log('Form already submitted or submitting, skipping...');
+      return true;
+    }
+    
+    console.log('Starting form submission...');
+    
+    // Set submitting state
+    set(state => {
+      const newState = {
+        ...state.state,
+        isSubmitting: true,
+        submissionError: null
+      };
+      saveFormState(newState);
+      return { state: newState };
+    });
     
     try {
       const success = await submitToZapier(state);
-      console.log('Submission result:', success);
+      console.log('Submission completed:', success);
       
-      // Always mark as submitted regardless of webhook success
-      if (success) {
-        set(state => {
-          const newState = {
-            ...state.state,
-            formSubmitted: true
-          };
-          saveFormState(newState);
-          return { state: newState };
-        });
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Failed to submit form:', error);
-      
-      // Still mark as submitted even if there's an error
+      // Mark as submitted
       set(state => {
         const newState = {
           ...state.state,
-          formSubmitted: true
+          formSubmitted: true,
+          isSubmitting: false,
+          submissionError: success ? null : 'Failed to submit form'
+        };
+        saveFormState(newState);
+        return { state: newState };
+      });
+      
+      return success;
+    } catch (error) {
+      console.error('Form submission error:', error);
+      
+      // Mark submission error but don't prevent navigation
+      set(state => {
+        const newState = {
+          ...state.state,
+          formSubmitted: true,
+          isSubmitting: false,
+          submissionError: 'Failed to submit form'
         };
         saveFormState(newState);
         return { state: newState };
@@ -323,7 +345,9 @@ export const useFormStore = create<FormStore>((set, get) => ({
   resetForm: () => {
     const newState = {
       ...initialState,
-      sessionId: generateSessionId()
+      sessionId: generateSessionId(),
+      isSubmitting: false,
+      submissionError: null
     };
     set({ state: newState });
     saveFormState(newState);
