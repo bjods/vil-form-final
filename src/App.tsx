@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useFormStore } from './store/formStore';
 import { FormState } from './types/form';
 import FormCard from './components/FormCard';
@@ -215,13 +215,22 @@ const FormFlow: React.FC<FormFlowProps> = ({
 };
 
 function App() {
-  const { state, initializeSession, setStep, setSubStep, clearErrors, resetForm } = useFormStore();
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
+  );
+}
+
+function AppRoutes() {
+  const { state, initializeSession, setStep, clearErrors, resetForm } = useFormStore();
   const [isStarted, setIsStarted] = useState(false);
   const [isCurrentStepValid, setIsCurrentStepValid] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const location = useLocation();
   
-  // Check if we're on an upload route FIRST
-  const isUploadRoute = window.location.pathname.startsWith('/upload/');
+  // Check if we're on an upload route
+  const isUploadRoute = location.pathname.startsWith('/upload/');
   
   useEffect(() => {
     // Only initialize form state if NOT on upload route
@@ -235,40 +244,38 @@ function App() {
     } else {
       setIsInitialized(true);
     }
-  }, [isUploadRoute]);
+  }, [isUploadRoute, initializeSession, state.step]);
   
   if (!isInitialized) {
     return null;
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Upload routes - these take priority */}
-        <Route path="/upload/:sessionId" element={<UploadPage />} />
-        <Route path="/upload-complete" element={<UploadComplete />} />
-        
-        {/* Main form route */}
-        <Route
-          path="/*"
-          element={
-            <FormFlow 
-              state={state}
-              isStarted={isStarted}
-              isCurrentStepValid={isCurrentStepValid}
-              setIsStarted={setIsStarted}
-              setIsCurrentStepValid={setIsCurrentStepValid}
-              handleBackToStart={() => {
-                setIsStarted(false);
-                setStep(0);
-                resetForm();
-                clearErrors();
-              }}
-            />
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      {/* Upload routes - these take priority */}
+      <Route path="/upload/:sessionId" element={<UploadPage />} />
+      <Route path="/upload-complete" element={<UploadComplete />} />
+      
+      {/* Main form route */}
+      <Route
+        path="/*"
+        element={
+          <FormFlow 
+            state={state}
+            isStarted={isStarted}
+            isCurrentStepValid={isCurrentStepValid}
+            setIsStarted={setIsStarted}
+            setIsCurrentStepValid={setIsCurrentStepValid}
+            handleBackToStart={() => {
+              setIsStarted(false);
+              setStep(0);
+              resetForm();
+              clearErrors();
+            }}
+          />
+        }
+      />
+    </Routes>
   );
 }
 
