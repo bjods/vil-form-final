@@ -1,12 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 
-declare global {
-  interface Window {
-    Calendly: any;
-  }
-}
-
 interface CalendlyEmbedProps {
   url: string;
   prefill?: {
@@ -74,25 +68,13 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
           prefill: {
             name: prefill.name || '',
             email: prefill.email || ''
-          },
-          utm: {}
+          }
         });
         
-        // Ensure proper iframe height and wait for it to load
-        setTimeout(() => {
-          const calendlyFrame = containerRef.current?.querySelector('iframe');
-          if (calendlyFrame) {
-            calendlyFrame.style.height = '750px';
-            calendlyFrame.style.minHeight = '750px';
-            calendlyFrame.style.width = '100%';
-            calendlyFrame.style.minWidth = '320px';
-            calendlyFrame.style.border = 'none';
-          }
-        }, 100);
-
         setIsLoading(false);
         
       } catch (error) {
+        console.error('Calendly initialization error:', error);
         setIsLoading(false);
       }
     };
@@ -125,7 +107,7 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
   }, [url, prefill]);
 
   return (
-    <div className="relative w-full" style={{ height: '750px' }}>
+    <div className="relative w-full">
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50 pointer-events-none">
           <div className="text-center">
@@ -139,11 +121,8 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
         ref={containerRef} 
         className="calendly-inline-widget"
         style={{
-          position: 'relative',
           width: '100%',
-          minWidth: '320px',
-          height: '750px',
-          minHeight: '750px'
+          minWidth: '320px'
         }}
       />
     </div>
