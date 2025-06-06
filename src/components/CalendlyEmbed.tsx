@@ -65,25 +65,32 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
       }
 
       try {
-        console.log('Initializing Calendly widget');
+        console.log('Initializing Calendly widget with URL:', url);
+        console.log('Prefill data:', prefill);
+        
+        // Clear any existing content
+        containerRef.current.innerHTML = '';
+        
         window.Calendly.initInlineWidget({
           url: url,
           parentElement: containerRef.current,
           prefill: {
-            name: prefill.name,
-            email: prefill.email
+            name: prefill.name || '',
+            email: prefill.email || ''
           },
           utm: {}
         });
         
-        // Ensure proper iframe height
-        const calendlyFrame = containerRef.current.querySelector('iframe');
-        if (calendlyFrame) {
-          calendlyFrame.style.height = '100%';
-          calendlyFrame.style.minHeight = '500px';
-          calendlyFrame.style.width = '100%';
-          calendlyFrame.style.border = 'none';
-        }
+        // Ensure proper iframe height and wait for it to load
+        setTimeout(() => {
+          const calendlyFrame = containerRef.current?.querySelector('iframe');
+          if (calendlyFrame) {
+            calendlyFrame.style.height = '100%';
+            calendlyFrame.style.minHeight = '500px';
+            calendlyFrame.style.width = '100%';
+            calendlyFrame.style.border = 'none';
+          }
+        }, 100);
 
         setIsLoading(false);
         
@@ -120,7 +127,7 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
   }, [url, prefill]);
 
   return (
-    <div className="relative w-full h-full">
+    <div className="calendly-embed-wrapper">
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50 pointer-events-none">
           <div className="text-center">
@@ -136,7 +143,7 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
         style={{
           position: 'relative',
           width: '100%',
-          height: '100%',
+          height: '500px',
           minHeight: '500px'
         }}
       />

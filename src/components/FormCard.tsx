@@ -13,15 +13,6 @@ const FormCard: React.FC<FormCardProps> = ({
   description,
   footerContent
 }) => {
-  // Check if children contains CalendlyBooking/CalendlyEmbed
-  const isCalendlyContent = React.Children.toArray(children).some((child) => {
-    if (React.isValidElement(child)) {
-      const type = child.type as any;
-      return type?.name === 'CalendlyBooking' || type?.name === 'CalendlyEmbed';
-    }
-    return false;
-  });
-
   return (
     <div 
       className="form-card animate-fade-in flex flex-col transition-all duration-300"
@@ -51,8 +42,8 @@ const FormCard: React.FC<FormCardProps> = ({
       <div className="flex-1 flex flex-col min-h-0">
         {/* Scrollable Content */}
         <div 
-          className={`form-content flex-1 ${isCalendlyContent ? 'overflow-hidden' : 'overflow-y-auto'}`}
-          style={{ padding: isCalendlyContent ? '0' : 'var(--widget-content-padding)' }}
+          className="form-content flex-1 overflow-y-auto"
+          style={{ padding: 'var(--widget-content-padding)' }}
         >
           {children}
         </div>
