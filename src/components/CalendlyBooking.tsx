@@ -36,7 +36,7 @@ const CalendlyBooking: React.FC = () => {
   }), [personalInfo]);
 
   return (
-    <div className="calendly-booking-container">
+    <div className="w-full h-full">
       <CalendlyEmbed
         url={CALENDLY_URL}
         prefill={prefillData}

@@ -68,9 +68,6 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
         console.log('Initializing Calendly widget with URL:', url);
         console.log('Prefill data:', prefill);
         
-        // Clear any existing content
-        containerRef.current.innerHTML = '';
-        
         window.Calendly.initInlineWidget({
           url: url,
           parentElement: containerRef.current,
@@ -85,9 +82,10 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
         setTimeout(() => {
           const calendlyFrame = containerRef.current?.querySelector('iframe');
           if (calendlyFrame) {
-            calendlyFrame.style.height = '100%';
-            calendlyFrame.style.minHeight = '500px';
+            calendlyFrame.style.height = '750px';
+            calendlyFrame.style.minHeight = '750px';
             calendlyFrame.style.width = '100%';
+            calendlyFrame.style.minWidth = '320px';
             calendlyFrame.style.border = 'none';
           }
         }, 100);
@@ -127,7 +125,7 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
   }, [url, prefill]);
 
   return (
-    <div className="calendly-embed-wrapper">
+    <div className="relative w-full" style={{ height: '750px' }}>
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50 pointer-events-none">
           <div className="text-center">
@@ -143,8 +141,9 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
         style={{
           position: 'relative',
           width: '100%',
-          height: '500px',
-          minHeight: '500px'
+          minWidth: '320px',
+          height: '750px',
+          minHeight: '750px'
         }}
       />
     </div>
