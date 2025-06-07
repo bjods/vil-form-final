@@ -124,8 +124,8 @@ export async function submitUploadsToZapier(sessionId: string, imageUrls: string
     return false;
   } catch (error) {
     console.error('Upload submission failed:', error);
-    // Return false to allow manual retry
-    return false;
+    // Return true to allow user to proceed even if webhook fails
+    return true;
   }
 }
 
