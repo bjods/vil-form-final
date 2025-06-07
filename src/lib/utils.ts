@@ -89,59 +89,44 @@ export async function submitToZapier(formData: FormState): Promise<boolean> {
 
 // Send file upload data to Zapier webhook
 export async function submitUploadsToZapier(sessionId: string, imageUrls: string[]): Promise<boolean> {
-  console.log('Starting upload submission...');
-  
   const payload = {
     session_id: sessionId,
     uploaded_images: imageUrls,
     submitted_at: new Date().toISOString()
   };
 
-  const maxRetries = 3;
-  let attempt = 0;
+  console.log('Submitting uploads to webhook...');
+  console.log('Payload:', payload);
+  
+  try {
+    const response = await fetch('https://eo9ejhr6tfvoy7o.m.pipedream.net', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
 
-  while (attempt < maxRetries) {
-    try {
-      console.log(`Upload attempt ${attempt + 1} of ${maxRetries}...`);
-      console.log('Payload:', payload);
-      
-      const response = await fetch('https://eo9ejhr6tfvoy7o.m.pipedream.net', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
+    console.log('Response status:', response.status);
 
-      console.log('Response status:', response.status);
-
-      // Check if response is truly successful
-      if (response.ok && response.status === 200) {
-        try {
-          const data = await response.json();
-          console.log('Uploads submitted successfully:', data);
-          return true; // Exit on success
-        } catch (jsonError) {
-          console.log('Response received but not JSON:', jsonError);
-          return true; // Still success even if response isn't JSON
-        }
+    // Check if response is successful
+    if (response.ok) {
+      try {
+        const data = await response.json();
+        console.log('Uploads submitted successfully:', data);
+      } catch (jsonError) {
+        console.log('Response received but not JSON:', jsonError);
       }
-
-      throw new Error(`HTTP ${response.status}`);
-    } catch (error) {
-      console.error(`Upload attempt ${attempt + 1} failed:`, error);
-      attempt++;
-
-      if (attempt === maxRetries) {
-        console.warn('Upload submission failed after 3 attempts, but proceeding anyway');
-        return true;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      return true;
     }
-  }
 
-  return true;
+    console.error(`HTTP ${response.status} error`);
+    return false;
+  } catch (error) {
+    console.error('Upload submission failed:', error);
+    // Return false to allow manual retry
+    return false;
+  }
 }
 
 // Service area validation

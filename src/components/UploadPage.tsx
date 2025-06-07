@@ -21,7 +21,7 @@ const UploadPage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (uploadedImages.length === 0) return;
+    if (uploadedImages.length === 0 || isSubmitting || isSuccess) return;
     
     if (!sessionId) {
       console.error('No session ID found');
@@ -38,9 +38,23 @@ const UploadPage: React.FC = () => {
         setTimeout(() => {
           navigate('/upload-complete');
         }, 2000);
+      } else {
+        // Failed - retry once automatically
+        console.log('First attempt failed, retrying...');
+        const retrySuccess = await submitUploadsToZapier(sessionId, uploadedImages);
+        if (retrySuccess) {
+          setIsSuccess(true);
+          setTimeout(() => {
+            navigate('/upload-complete');
+          }, 2000);
+        } else {
+          // Still failed - show error but let user retry manually
+          alert('Failed to submit photos. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Failed to submit uploads:', error);
+      alert('An error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
