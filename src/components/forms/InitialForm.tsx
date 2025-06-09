@@ -500,7 +500,7 @@ const AddressStep: React.FC = () => {
           className="mt-1"
           autoComplete="off"
         />
-        {!import.meta.env.VITE_GOOGLE_MAPS_API_KEY && (
+        {(!import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_API_KEY === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') && (
           <p className="text-amber-600 text-sm mt-1">
             ⚠️ Google Maps API key not configured. Manual address entry only.
           </p>
@@ -982,7 +982,7 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
 
   const renderNavigation = () => {
     return (
-      <div className="flex justify-between pt-6 border-t border-gray-200">
+      <div className="flex justify-between">
         {currentStep === 0 ? (
           <div></div>
         ) : (
@@ -1010,7 +1010,7 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
 
   // Fixed container size for embedding
   return (
-    <div className="w-full max-w-2xl mx-auto" style={{ height: '600px', overflow: 'auto' }}>
+    <div className="w-full max-w-2xl mx-auto" style={{ height: '600px' }}>
       <Card className="h-full flex flex-col">
         <CardHeader className="flex-shrink-0">
           <CardTitle>{currentStepData?.title}</CardTitle>
@@ -1018,11 +1018,13 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
             Step {currentStep + 1} of {steps.length}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-auto">
-            {renderStepContent()}
+        <CardContent className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto pr-2">
+            <div className="pb-4">
+              {renderStepContent()}
+            </div>
           </div>
-          <div className="flex-shrink-0 mt-auto">
+          <div className="flex-shrink-0 border-t border-gray-200 pt-4 mt-4">
             {renderNavigation()}
           </div>
         </CardContent>
