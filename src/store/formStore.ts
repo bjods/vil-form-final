@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { FormState } from '../types/form';
-import { determineFormPath, generateSessionId, submitToZapier } from '../lib/utils';
+import { determineFormPath, generateSessionId } from '../lib/utils';
 import { createSession, updateSession, getSession, FormSession } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 interface FormStore {
   state: FormState;
@@ -247,26 +248,37 @@ export const useFormStore = create<FormStore>((set, get) => ({
     });
     
     try {
-      const success = await submitToZapier(state);
-      console.log('Submission completed:', success);
-      
       // Mark as submitted and save to Supabase
-      set(currentState => {
-        const newState = {
-          ...currentState.state,
-          formSubmitted: true,
-          isSubmitting: false,
-          submissionError: success ? null : 'Failed to submit form'
-        };
-        
-        if (newState.sessionId) {
-          autoSave(newState.sessionId, newState);
+      const newState = {
+        ...state,
+        formSubmitted: true,
+        isSubmitting: false,
+        submissionError: null
+      };
+      
+      if (newState.sessionId) {
+        // Update the database to mark form as completed
+        const supabaseData = convertToSupabaseFormat(newState);
+        const { error } = await supabase
+          .from('form_sessions')
+          .update({
+            ...supabaseData,
+            initial_form_completed: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', newState.sessionId);
+          
+        if (error) {
+          console.error('Error updating form completion status:', error);
+          throw error;
         }
         
-        return { state: newState };
-      });
+        console.log('Form marked as completed in database');
+      }
       
-      return success;
+      set(currentState => ({ state: newState }));
+      
+      return true;
     } catch (error) {
       console.error('Form submission error:', error);
       
@@ -278,10 +290,6 @@ export const useFormStore = create<FormStore>((set, get) => ({
           isSubmitting: false,
           submissionError: 'Failed to submit form'
         };
-        
-        if (newState.sessionId) {
-          autoSave(newState.sessionId, newState);
-        }
         
         return { state: newState };
       });

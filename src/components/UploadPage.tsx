@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Label } from './ui/label';
 import FileUpload from './FileUpload';
 import FormCard from './FormCard';
-import { submitUploadsToZapier } from '../lib/utils';
+import { supabase } from '../lib/supabase';
 import { Loader2 } from 'lucide-react';
 
 import { useParams } from 'react-router-dom';
@@ -31,30 +31,32 @@ const UploadPage: React.FC = () => {
     
     setIsSubmitting(true);
     try {
-      console.log('Submitting with sessionId:', sessionId);
-      const success = await submitUploadsToZapier(sessionId, uploadedImages);
-      if (success) {
-        setIsSuccess(true);
-        setTimeout(() => {
-          navigate('/upload-complete');
-        }, 2000);
-      } else {
-        // Failed - retry once automatically
-        console.log('First attempt failed, retrying...');
-        const retrySuccess = await submitUploadsToZapier(sessionId, uploadedImages);
-        if (retrySuccess) {
-          setIsSuccess(true);
-          setTimeout(() => {
-            navigate('/upload-complete');
-          }, 2000);
-        } else {
-          // Still failed - show error but let user retry manually
-          alert('Failed to submit photos. Please try again.');
-        }
+      console.log('Submitting photos to Supabase with sessionId:', sessionId);
+      
+      // Update the session with uploaded photos
+      const { error } = await supabase
+        .from('form_sessions')
+        .update({
+          photo_urls: uploadedImages,
+          photos_uploaded: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sessionId);
+      
+      if (error) {
+        console.error('Error updating photos in database:', error);
+        throw error;
       }
+      
+      console.log('Photos successfully saved to database');
+      setIsSuccess(true);
+      setTimeout(() => {
+        navigate('/upload-complete');
+      }, 2000);
+      
     } catch (error) {
       console.error('Failed to submit uploads:', error);
-      alert('An error occurred. Please try again.');
+      alert('An error occurred while saving photos. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

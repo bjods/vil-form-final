@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { FormState, FormSubmissionPayload } from "../types/form";
+import { FormState } from "../types/form";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -22,112 +22,7 @@ export function loadFormState(): FormState | null {
   return saved ? JSON.parse(saved) : null;
 }
 
-// Send form data to Zapier webhook
-export async function submitToZapier(formData: FormState): Promise<boolean> {
-  const payload: FormSubmissionPayload = {
-    session_id: formData.sessionId,
-    selected_services: formData.services,
-    upload_link: formData.personalInfo.textUploadLink 
-      ? `${window.location.origin}/upload/${formData.sessionId}` 
-      : null,
-    text_upload_link_requested: formData.personalInfo.textUploadLink,
-    personal_information: {
-      first_name: formData.personalInfo.firstName,
-      last_name: formData.personalInfo.lastName,
-      email: formData.personalInfo.email,
-      phone: formData.personalInfo.phone,
-      address: formData.address
-    },
-    form_path: formData.formPath,
-    budgets: formData.budgets,
-    service_details: formData.serviceDetails,
-    project_scope: formData.projectScope,
-    start_deadlines: formData.startDeadlines,
-    previous_provider: formData.previousProvider,
-    previous_quotes: formData.previousQuotes,
-    price_vs_long_term: formData.priceVsLongTerm,
-    site_challenges: formData.siteChallenges,
-    project_success_criteria: formData.projectSuccessCriteria,
-    uploaded_images: formData.personalInfo.uploadedImages || [],
-    inside_service_area: formData.insideServiceArea,
-    submitted_at: new Date().toISOString()
-  };
 
-  console.log('Submitting form to webhook...');
-  console.log('Payload:', payload);
-  
-  try {
-    const response = await fetch('https://eotwpuhp53a1tsu.m.pipedream.net', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    console.log('Response status:', response.status);
-
-    // Check if response is successful
-    if (response.ok) {
-      try {
-        const data = await response.json();
-        console.log('Form submitted successfully:', data);
-      } catch (jsonError) {
-        console.log('Response received but not JSON:', jsonError);
-      }
-      return true;
-    }
-
-    console.error(`HTTP ${response.status} error`);
-    return false;
-  } catch (error) {
-    console.error('Form submission failed:', error);
-    // Return true to allow user to proceed even if webhook fails
-    return true;
-  }
-}
-
-// Send file upload data to Zapier webhook
-export async function submitUploadsToZapier(sessionId: string, imageUrls: string[]): Promise<boolean> {
-  const payload = {
-    session_id: sessionId,
-    uploaded_images: imageUrls,
-    submitted_at: new Date().toISOString()
-  };
-
-  console.log('Submitting uploads to webhook...');
-  console.log('Payload:', payload);
-  
-  try {
-    const response = await fetch('https://eo9ejhr6tfvoy7o.m.pipedream.net', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    console.log('Response status:', response.status);
-
-    // Check if response is successful
-    if (response.ok) {
-      try {
-        const data = await response.json();
-        console.log('Uploads submitted successfully:', data);
-      } catch (jsonError) {
-        console.log('Response received but not JSON:', jsonError);
-      }
-      return true;
-    }
-
-    console.error(`HTTP ${response.status} error`);
-    return false;
-  } catch (error) {
-    console.error('Upload submission failed:', error);
-    // Return true to allow user to proceed even if webhook fails
-    return true;
-  }
-}
 
 // Service area validation
 export function isInServiceArea(postalCode: string): boolean {
