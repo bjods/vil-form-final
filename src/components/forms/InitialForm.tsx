@@ -578,7 +578,7 @@ const ProjectDetailsStep: React.FC = () => {
         <Label className="text-base font-medium">When would you like to start?</Label>
         <div className="grid grid-cols-2 gap-3 mt-3">
           {['this month', '1-3 months', '3-6 months', 'next year'].map(option => (
-            <label key={option} className="flex items-center space-x-2 cursor-pointer p-3 border rounded-lg hover:bg-gray-50">
+            <label key={option} className="flex items-center space-x-2 cursor-pointer p-3 border border-gray-300 rounded-lg hover:bg-yellow-50 hover:border-yellow-400 transition-colors">
               <input
                 type="radio"
                 name="project-timeline"
@@ -591,9 +591,9 @@ const ProjectDetailsStep: React.FC = () => {
                     setStartDeadline(serviceId, e.target.value, '');
                   });
                 }}
-                className="w-4 h-4 text-blue-600"
+                className="w-4 h-4 text-yellow-600 focus:ring-yellow-500"
               />
-              <span className="capitalize text-sm">{option}</span>
+              <span className="capitalize text-sm text-gray-900">{option}</span>
             </label>
           ))}
         </div>
@@ -694,8 +694,8 @@ const ThankYouStep: React.FC = () => {
   
   return (
     <div className="text-center space-y-6 py-8">
-      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-        <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
         </svg>
       </div>
@@ -707,36 +707,36 @@ const ThankYouStep: React.FC = () => {
         </p>
       </div>
       
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-left">
-        <h3 className="font-semibold text-blue-900 mb-3">What happens next?</h3>
-        <div className="space-y-3 text-blue-800">
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-left">
+        <h3 className="font-semibold text-gray-900 mb-3">What happens next?</h3>
+        <div className="space-y-3 text-gray-800">
           <div className="flex items-start space-x-3">
-            <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5">1</div>
+            <div className="w-6 h-6 bg-yellow-600 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5">1</div>
             <div>
-              <p className="font-medium">Check your email</p>
-              <p className="text-sm text-blue-700">We'll send you a detailed estimate within 24 hours to <strong>{state.personalInfo.email}</strong></p>
+              <p className="font-medium text-gray-900">Check your email</p>
+              <p className="text-sm text-gray-700">We'll send you a detailed estimate within 24 hours to <strong>{state.personalInfo.email}</strong></p>
             </div>
           </div>
           <div className="flex items-start space-x-3">
-            <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5">2</div>
+            <div className="w-6 h-6 bg-yellow-600 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5">2</div>
             <div>
-              <p className="font-medium">Book your discovery call</p>
-              <p className="text-sm text-blue-700">Use the calendar link in your email to schedule a consultation with our team</p>
+              <p className="font-medium text-gray-900">Book your discovery call</p>
+              <p className="text-sm text-gray-700">Use the calendar link in your email to schedule a consultation with our team</p>
             </div>
           </div>
           <div className="flex items-start space-x-3">
-            <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5">3</div>
+            <div className="w-6 h-6 bg-yellow-600 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5">3</div>
             <div>
-              <p className="font-medium">Get your custom plan</p>
-              <p className="text-sm text-blue-700">We'll create a personalized landscaping plan tailored to your vision and budget</p>
+              <p className="font-medium text-gray-900">Get your custom plan</p>
+              <p className="text-sm text-gray-700">We'll create a personalized landscaping plan tailored to your vision and budget</p>
             </div>
           </div>
         </div>
       </div>
       
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-        <p className="text-sm text-gray-600">
-          <strong>Questions?</strong> Call us at <a href="tel:+1234567890" className="text-blue-600 hover:underline">(123) 456-7890</a> or email <a href="mailto:info@villandscaping.com" className="text-blue-600 hover:underline">info@villandscaping.com</a>
+      <div className="bg-white border border-gray-300 rounded-lg p-4">
+        <p className="text-sm text-gray-700">
+          <strong className="text-gray-900">Questions?</strong> Call us at <a href="tel:+1234567890" className="text-yellow-600 hover:text-yellow-700 hover:underline font-medium">(123) 456-7890</a> or email <a href="mailto:info@villandscaping.com" className="text-yellow-600 hover:text-yellow-700 hover:underline font-medium">info@villandscaping.com</a>
         </p>
       </div>
     </div>
@@ -781,7 +781,7 @@ const UploadPhotosStep: React.FC<{
           <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <div className="space-y-2">
             <p className="text-sm text-gray-600">
-              <label htmlFor="file-upload" className="cursor-pointer text-blue-600 hover:text-blue-500">
+              <label htmlFor="file-upload" className="cursor-pointer text-yellow-600 hover:text-yellow-700 font-medium">
                 Click to upload
               </label>
               {' '}or drag and drop
@@ -800,12 +800,12 @@ const UploadPhotosStep: React.FC<{
         </div>
 
         {isUploading && (
-          <p className="text-sm text-blue-600 mt-2">Uploading images...</p>
+          <p className="text-sm text-yellow-600 mt-2">Uploading images...</p>
         )}
 
         {uploadedImages.length > 0 && (
-          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-            <p className="text-green-700 text-sm">
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <p className="text-yellow-700 text-sm">
               ✓ {uploadedImages.length} {uploadedImages.length === 1 ? 'image' : 'images'} uploaded successfully
             </p>
           </div>
