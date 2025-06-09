@@ -688,6 +688,61 @@ const MaintenanceDetailsStep: React.FC = () => {
   );
 };
 
+// Thank You Step Component
+const ThankYouStep: React.FC = () => {
+  const { state } = useFormStore();
+  
+  return (
+    <div className="text-center space-y-6 py-8">
+      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-gray-900">Thank You!</h2>
+        <p className="text-lg text-gray-700">
+          Your request has been submitted successfully.
+        </p>
+      </div>
+      
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-left">
+        <h3 className="font-semibold text-blue-900 mb-3">What happens next?</h3>
+        <div className="space-y-3 text-blue-800">
+          <div className="flex items-start space-x-3">
+            <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5">1</div>
+            <div>
+              <p className="font-medium">Check your email</p>
+              <p className="text-sm text-blue-700">We'll send you a detailed estimate within 24 hours to <strong>{state.personalInfo.email}</strong></p>
+            </div>
+          </div>
+          <div className="flex items-start space-x-3">
+            <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5">2</div>
+            <div>
+              <p className="font-medium">Book your discovery call</p>
+              <p className="text-sm text-blue-700">Use the calendar link in your email to schedule a consultation with our team</p>
+            </div>
+          </div>
+          <div className="flex items-start space-x-3">
+            <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold mt-0.5">3</div>
+            <div>
+              <p className="font-medium">Get your custom plan</p>
+              <p className="text-sm text-blue-700">We'll create a personalized landscaping plan tailored to your vision and budget</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <p className="text-sm text-gray-600">
+          <strong>Questions?</strong> Call us at <a href="tel:+1234567890" className="text-blue-600 hover:underline">(123) 456-7890</a> or email <a href="mailto:info@villandscaping.com" className="text-blue-600 hover:underline">info@villandscaping.com</a>
+        </p>
+      </div>
+    </div>
+  );
+};
+
 // Upload Photos Step Component
 const UploadPhotosStep: React.FC<{
   uploadedImages: string[];
@@ -795,6 +850,7 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [textUploadRequested, setTextUploadRequested] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   // Determine if user selected project services (design-build or enhancement)
   const hasProjectServices = state.services.some(service => 
@@ -940,12 +996,8 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
       // Submit the form and mark as completed
       await submitForm();
       
-      // Navigate to completion or call onComplete
-      if (onComplete) {
-        onComplete();
-      } else {
-        alert('Form submitted successfully!');
-      }
+      // Show thank you page
+      setIsSubmitted(true);
     } catch (error) {
       console.error('Failed to submit form:', error);
       alert('Failed to submit form. Please try again.');
@@ -955,6 +1007,11 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
   };
 
   const renderStepContent = () => {
+    // Show thank you page if form is submitted
+    if (isSubmitted) {
+      return <ThankYouStep />;
+    }
+
     switch (currentStepData?.component) {
       case 'contact':
         return <ContactInfoStep onInteraction={handleSessionInitialization} />;
@@ -1013,9 +1070,9 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
     <div className="w-full max-w-2xl mx-auto" style={{ height: '600px' }}>
       <Card className="h-full flex flex-col">
         <CardHeader className="flex-shrink-0">
-          <CardTitle>{currentStepData?.title}</CardTitle>
+          <CardTitle>{isSubmitted ? 'Complete!' : currentStepData?.title}</CardTitle>
           <CardDescription>
-            Step {currentStep + 1} of {steps.length}
+            {isSubmitted ? 'Your request has been submitted' : `Step ${currentStep + 1} of ${steps.length}`}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col min-h-0 p-6">
@@ -1024,9 +1081,11 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
               {renderStepContent()}
             </div>
           </div>
-          <div className="flex-shrink-0 border-t border-gray-200 pt-4 mt-4 -mx-1">
-            {renderNavigation()}
-          </div>
+          {!isSubmitted && (
+            <div className="flex-shrink-0 border-t border-gray-200 pt-4 mt-4 -mx-1">
+              {renderNavigation()}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
