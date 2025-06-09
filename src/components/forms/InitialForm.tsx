@@ -9,10 +9,10 @@ import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { getServiceById, services } from '../../data/services';
 import { Service } from '../../types/form';
 import ServiceSelection from '../ServiceSelection';
-import ServiceDetailsSection from '../ServiceDetailsSection';
 
 // Google Maps types
 declare global {
@@ -49,6 +49,210 @@ const uploadImage = async (file: File): Promise<string> => {
 interface InitialFormProps {
   onComplete?: () => void;
 }
+
+// Project Service Details Component
+const ProjectServiceDetailsSection: React.FC = () => {
+  const { state, setServiceDetails } = useFormStore();
+  const { services: selectedServices, serviceDetails } = state;
+  
+  const projectServices = selectedServices.filter(serviceId => 
+    ['landscape-design-build', 'landscape-enhancement'].includes(serviceId)
+  );
+
+  const handleCheckboxChange = (serviceId: string, option: string) => {
+    const currentDetails = serviceDetails[serviceId] || [];
+    
+    if (Array.isArray(currentDetails)) {
+      if (currentDetails.includes(option)) {
+        setServiceDetails(
+          serviceId, 
+          currentDetails.filter(item => item !== option)
+        );
+      } else {
+        setServiceDetails(serviceId, [...currentDetails, option]);
+      }
+    } else {
+      setServiceDetails(serviceId, [option]);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {projectServices.map(serviceId => {
+        const service = getServiceById(serviceId);
+        if (!service) return null;
+        
+        let content;
+        
+        switch (serviceId) {
+          case 'landscape-design-build':
+            content = (
+              <div className="space-y-3">
+                <Label className="block mb-2">Select design elements (select all that apply):</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {service.options?.elements.map((element: string) => {
+                    const currentDetails = serviceDetails[serviceId] || [];
+                    const isChecked = Array.isArray(currentDetails) && currentDetails.includes(element);
+                    
+                    return (
+                      <div key={element} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`element-${element}`}
+                          checked={isChecked}
+                          onCheckedChange={() => handleCheckboxChange(serviceId, element)}
+                        />
+                        <Label 
+                          htmlFor={`element-${element}`}
+                          className="text-sm cursor-pointer"
+                        >
+                          {element}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+            break;
+            
+          case 'landscape-enhancement':
+            content = (
+              <div className="space-y-3">
+                <Label className="block mb-2">Select enhancement types (select all that apply):</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {service.options?.types.map((type: string) => {
+                    const currentDetails = serviceDetails[serviceId] || [];
+                    const isChecked = Array.isArray(currentDetails) && currentDetails.includes(type);
+                    
+                    return (
+                      <div key={type} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`type-${type}`}
+                          checked={isChecked}
+                          onCheckedChange={() => handleCheckboxChange(serviceId, type)}
+                        />
+                        <Label 
+                          htmlFor={`type-${type}`}
+                          className="text-sm cursor-pointer"
+                        >
+                          {type}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+            break;
+            
+          default:
+            content = null;
+        }
+        
+        if (!content) return null;
+        
+        return (
+          <div key={serviceId} className="p-4 border border-gray-200 rounded-md">
+            <h3 className="text-lg font-medium mb-3">{service.name} Details</h3>
+            {content}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// Maintenance Service Details Component
+const MaintenanceServiceDetailsSection: React.FC = () => {
+  const { state, setServiceDetails } = useFormStore();
+  const { services: selectedServices, serviceDetails } = state;
+  
+  const maintenanceServices = selectedServices.filter(serviceId => 
+    ['lawn-maintenance', 'snow-management'].includes(serviceId)
+  );
+
+  const handleRadioChange = (serviceId: string, value: string) => {
+    setServiceDetails(serviceId, value);
+  };
+  
+  const handleSelectChange = (serviceId: string, value: string) => {
+    setServiceDetails(serviceId, value);
+  };
+
+  return (
+    <div className="space-y-6">
+      {maintenanceServices.map(serviceId => {
+        const service = getServiceById(serviceId);
+        if (!service) return null;
+        
+        let content;
+        
+        switch (serviceId) {
+          case 'lawn-maintenance':
+            content = (
+              <div className="space-y-3">
+                <Label className="block mb-2">Select service type:</Label>
+                <RadioGroup 
+                  value={serviceDetails[serviceId] || ''}
+                  onValueChange={(value) => handleRadioChange(serviceId, value)}
+                >
+                  {service.options?.types.map((type: string) => (
+                    <div key={type} className="flex items-center space-x-2">
+                      <RadioGroupItem value={type} id={`type-${type}`} />
+                      <Label 
+                        htmlFor={`type-${type}`}
+                        className="text-sm cursor-pointer"
+                      >
+                        {type}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+            );
+            break;
+            
+          case 'snow-management':
+            content = (
+              <div className="space-y-3">
+                <Label htmlFor={`property-size-${serviceId}`} className="block mb-2">
+                  Select property size:
+                </Label>
+                <Select
+                  value={serviceDetails[serviceId] || ''}
+                  onValueChange={(value) => handleSelectChange(serviceId, value)}
+                >
+                  <SelectTrigger id={`property-size-${serviceId}`}>
+                    <SelectValue placeholder="Select property size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {service.options?.propertySizes.map((size: string) => (
+                      <SelectItem key={size} value={size}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+            break;
+            
+          default:
+            content = null;
+        }
+        
+        if (!content) return null;
+        
+        return (
+          <div key={serviceId} className="p-4 border border-gray-200 rounded-md">
+            <h3 className="text-lg font-medium mb-3">{service.name} Details</h3>
+            {content}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 // Contact Info Step Component
 const ContactInfoStep: React.FC<{ onInteraction: () => void }> = ({ onInteraction }) => {
@@ -173,6 +377,7 @@ const ContactInfoStep: React.FC<{ onInteraction: () => void }> = ({ onInteractio
 const AddressStep: React.FC = () => {
   const { state, setAddress } = useFormStore();
   const [isInServiceArea, setIsInServiceArea] = useState<boolean | null>(null);
+  const [autocompleteInitialized, setAutocompleteInitialized] = useState(false);
 
   useEffect(() => {
     // Load Google Places API
@@ -187,11 +392,15 @@ const AddressStep: React.FC = () => {
     };
 
     return () => {
-      document.head.removeChild(script);
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
     };
   }, []);
 
   const initializeAutocomplete = () => {
+    if (autocompleteInitialized) return;
+    
     const input = document.getElementById('address-input') as HTMLInputElement;
     if (!input || !window.google) return;
 
@@ -219,6 +428,8 @@ const AddressStep: React.FC = () => {
         setAddress(place.formatted_address, postalCode, serviceAreaCheck);
       }
     });
+
+    setAutocompleteInitialized(true);
   };
 
   const validateServiceArea = (address: string, postalCode: string): boolean => {
@@ -259,8 +470,8 @@ const ProjectDetailsStep: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Service Details using original component */}
-      <ServiceDetailsSection />
+      {/* Service Details using project-specific component */}
+      <ProjectServiceDetailsSection />
       
       {/* Project Vision */}
       <div>
@@ -346,8 +557,8 @@ const MaintenanceDetailsStep: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Service Details using original component */}
-      <ServiceDetailsSection />
+      {/* Service Details using maintenance-specific component */}
+      <MaintenanceServiceDetailsSection />
       
       {/* Site Challenges */}
       <div>
@@ -707,15 +918,17 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
   // Fixed container size for embedding
   return (
     <div className="w-full max-w-2xl mx-auto" style={{ height: '600px', overflow: 'auto' }}>
-      <Card className="h-full">
-        <CardHeader>
+      <Card className="h-full flex flex-col">
+        <CardHeader className="flex-shrink-0">
           <CardTitle>{currentStepData?.title}</CardTitle>
           <CardDescription>
             Step {currentStep + 1} of {steps.length}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 overflow-auto">
-          {renderStepContent()}
+          <div className="pb-20">
+            {renderStepContent()}
+          </div>
           {renderNavigation()}
         </CardContent>
       </Card>
