@@ -604,7 +604,7 @@ const ProjectDetailsStep: React.FC = () => {
 
 // Maintenance Details Step Component
 const MaintenanceDetailsStep: React.FC = () => {
-  const { state, setSiteChallenges, setStartDeadline } = useFormStore();
+  const { state, setSiteChallenges, setStartDeadline, setBudget } = useFormStore();
   
   const maintenanceServices = state.services.filter(serviceId => 
     ['lawn-maintenance', 'snow-management'].includes(serviceId)
@@ -627,6 +627,37 @@ const MaintenanceDetailsStep: React.FC = () => {
           rows={3}
           className="mt-1"
         />
+      </div>
+
+      {/* Budget */}
+      <div>
+        <Label className="text-base font-medium">Budget Range</Label>
+        <p className="text-sm text-gray-600 mb-3">What's your budget for these services?</p>
+        <div className="space-y-3">
+          {maintenanceServices.map(serviceId => {
+            const service = getServiceById(serviceId);
+            if (!service) return null;
+            
+            return (
+              <div key={serviceId}>
+                <Label htmlFor={`budget-${serviceId}`}>{service.name} Budget</Label>
+                <div className="relative mt-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500">$</span>
+                  </div>
+                  <Input
+                    id={`budget-${serviceId}`}
+                    type="number"
+                    placeholder="0"
+                    value={state.budgets[serviceId] || ''}
+                    onChange={(e) => setBudget(serviceId, Number(e.target.value))}
+                    className="pl-7"
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Start Dates */}
@@ -860,10 +891,13 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
         break;
       case 'maintenance-details':
         const hasSiteChallenges = !!state.siteChallenges;
+        const hasMaintenanceBudgets = state.services
+          .filter(s => ['lawn-maintenance', 'snow-management'].includes(s))
+          .every(serviceId => state.budgets[serviceId] > 0);
         const hasMaintenanceStartDates = state.services
           .filter(s => ['lawn-maintenance', 'snow-management'].includes(s))
           .every(serviceId => state.startDeadlines[serviceId]?.startDate);
-        valid = hasSiteChallenges && hasMaintenanceStartDates;
+        valid = hasSiteChallenges && hasMaintenanceBudgets && hasMaintenanceStartDates;
         break;
       case 'upload':
         valid = uploadedImages.length > 0 || textUploadRequested;
@@ -949,10 +983,14 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
   const renderNavigation = () => {
     return (
       <div className="flex justify-between pt-6 border-t border-gray-200">
-        <Button variant="outline" onClick={handleBack} disabled={currentStep === 0}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
-        </Button>
+        {currentStep === 0 ? (
+          <div></div>
+        ) : (
+          <Button variant="outline" onClick={handleBack}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+        )}
         <Button 
           onClick={handleNext}
           disabled={!isValid || isSubmitting}
@@ -980,11 +1018,13 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
             Step {currentStep + 1} of {steps.length}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 overflow-auto">
-          <div className="pb-20">
+        <CardContent className="flex-1 flex flex-col">
+          <div className="flex-1 overflow-auto">
             {renderStepContent()}
           </div>
-          {renderNavigation()}
+          <div className="flex-shrink-0 mt-auto">
+            {renderNavigation()}
+          </div>
         </CardContent>
       </Card>
     </div>
