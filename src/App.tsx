@@ -221,31 +221,55 @@ function App() {
 
 function AppRoutes() {
   const location = useLocation();
-  const { state, resetForm } = useFormStore();
+  const { state, resetForm, initializeSession } = useFormStore();
   const [isStarted, setIsStarted] = useState(false);
   const [isCurrentStepValid, setIsCurrentStepValid] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const init = async () => {
-      // Check if we're on the upload page
-      if (location.pathname.startsWith('/upload')) {
-        // Extract session ID from URL
-        const sessionId = location.pathname.split('/upload/')[1];
-        if (sessionId) {
-          // Load session data for upload page
-          console.log('Loading session for upload:', sessionId);
+      try {
+        console.log('Initializing session...');
+        // Initialize the session when the app loads
+        await initializeSession();
+        console.log('Session initialized successfully');
+        setIsInitialized(true);
+        
+        // Check if we're on the upload page
+        if (location.pathname.startsWith('/upload')) {
+          // Extract session ID from URL
+          const sessionId = location.pathname.split('/upload/')[1];
+          if (sessionId) {
+            // Load session data for upload page
+            console.log('Loading session for upload:', sessionId);
+          }
         }
+      } catch (error) {
+        console.error('Failed to initialize app:', error);
+        setIsInitialized(true); // Still allow the app to load
       }
     };
 
     init();
-  }, [location.pathname]);
+  }, [initializeSession]);
 
   const handleBackToStart = () => {
     setIsStarted(false);
     setIsCurrentStepValid(false);
     resetForm();
   };
+
+  // Show loading while initializing
+  if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Routes>
