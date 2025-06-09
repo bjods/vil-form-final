@@ -43,7 +43,7 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
         return;
       }
       
-      console.log('Calendly message received:', e.data);
+        console.log('Calendly message received:', e.data);
       
       // Check for various Calendly event formats
       if (e.data?.event === 'calendly.event_scheduled' ||
@@ -74,8 +74,8 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
     if (!isValidCalendlyUrl(url)) {
       setError('Invalid Calendly URL format. Please check the URL.');
       setIsLoading(false);
-      return;
-    }
+        return;
+      }
 
     const initializeWidget = () => {
       if (!containerRef.current || !isMounted.current || widgetInitialized.current) {
@@ -129,11 +129,11 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
         if (!calendlyScriptLoaded && !calendlyScriptLoading) {
           calendlyScriptLoading = true;
           
-          const script = document.createElement('script');
-          script.src = 'https://assets.calendly.com/assets/external/widget.js';
-          script.async = true;
-          
-          script.onload = () => {
+      const script = document.createElement('script');
+      script.src = 'https://assets.calendly.com/assets/external/widget.js';
+      script.async = true;
+      
+      script.onload = () => {
             calendlyScriptLoaded = true;
             calendlyScriptLoading = false;
             console.log('Calendly script loaded');
@@ -166,16 +166,16 @@ const CalendlyEmbed: React.FC<CalendlyEmbedProps> = ({
                 initializeWidget();
               }
             }, 200);
-          };
-          
+      };
+      
           script.onerror = () => {
             calendlyScriptLoading = false;
             console.error('Failed to load Calendly script');
             // Fallback to iframe approach
             initializeWidget();
-          };
-          
-          document.head.appendChild(script);
+      };
+      
+      document.head.appendChild(script);
         } else if (calendlyScriptLoaded && window.Calendly && window.Calendly.initInlineWidget) {
           // Script already loaded, initialize widget
           if (containerRef.current && !widgetInitialized.current) {
