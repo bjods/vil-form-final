@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { FormState } from '../types/form';
-import { determineFormPath, generateSessionId, saveFormState, loadFormState, submitToZapier } from '../lib/utils';
+import { determineFormPath, generateSessionId, submitToZapier } from '../lib/utils';
+import { createSession, updateSession, getSession, FormSession } from '../lib/supabase';
 
 interface FormStore {
   state: FormState;
@@ -27,14 +28,14 @@ interface FormStore {
 }
 
 const initialState: FormState = {
-  sessionId: generateSessionId(),
+  sessionId: null,
   step: 0,
   currentSubStep: 0,
   services: [],
   formPath: null,
   address: '',
   postalCode: '',
-  insideServiceArea: null,
+  insideServiceArea: false,
   budgets: {},
   serviceDetails: {},
   projectScope: '',
@@ -62,20 +63,128 @@ const initialState: FormState = {
   touched: {}
 };
 
+// Helper function to convert FormState to Supabase format
+const convertToSupabaseFormat = (state: FormState): Partial<FormSession> => ({
+  first_name: state.personalInfo.firstName || undefined,
+  last_name: state.personalInfo.lastName || undefined,
+  email: state.personalInfo.email || undefined,
+  phone: state.personalInfo.phone || undefined,
+  address: state.address || undefined,
+  postal_code: state.postalCode || undefined,
+  inside_service_area: state.insideServiceArea,
+  services: state.services.length > 0 ? state.services : undefined,
+  service_details: Object.keys(state.serviceDetails).length > 0 ? state.serviceDetails : undefined,
+  budgets: Object.keys(state.budgets).length > 0 ? state.budgets : undefined,
+  project_vision: state.projectScope || undefined,
+  success_criteria: state.projectSuccessCriteria || undefined,
+  referral_source: state.personalInfo.referralSource || undefined,
+  previous_quotes: state.previousQuotes,
+  price_vs_long_term: state.priceVsLongTerm || undefined,
+  previous_provider: state.previousProvider ? true : undefined,
+  site_challenges: state.siteChallenges || undefined,
+  start_deadlines: Object.keys(state.startDeadlines).length > 0 ? state.startDeadlines : undefined,
+  upload_link_requested: state.personalInfo.textUploadLink,
+  photo_urls: state.personalInfo.uploadedImages.length > 0 ? state.personalInfo.uploadedImages : undefined,
+  meeting_scheduled: state.meetingBooked,
+  initial_form_completed: state.formSubmitted
+});
+
+// Helper function to convert Supabase format to FormState
+const convertFromSupabaseFormat = (session: FormSession): FormState => ({
+  sessionId: session.id,
+  step: 0,
+  currentSubStep: 0,
+  services: session.services || [],
+  formPath: determineFormPath(session.services || []),
+  address: session.address || '',
+  postalCode: session.postal_code || '',
+  insideServiceArea: session.inside_service_area || false,
+  budgets: session.budgets || {},
+  serviceDetails: session.service_details || {},
+  projectScope: session.project_vision || '',
+  startDeadlines: session.start_deadlines || {},
+  previousProvider: session.previous_provider ? 'yes' : '',
+  previousQuotes: session.previous_quotes,
+  priceVsLongTerm: session.price_vs_long_term as 'price' | 'long-term' | undefined,
+  siteChallenges: session.site_challenges || '',
+  projectSuccessCriteria: session.success_criteria || '',
+  personalInfo: {
+    firstName: session.first_name || '',
+    lastName: session.last_name || '',
+    email: session.email || '',
+    phone: session.phone || '',
+    textUploadLink: session.upload_link_requested || false,
+    referralSource: session.referral_source,
+    uploadedImages: session.photo_urls || []
+  },
+  uploadLinkGenerated: false,
+  formSubmitted: session.initial_form_completed || false,
+  meetingBooked: session.meeting_scheduled || false,
+  isSubmitting: false,
+  submissionError: null,
+  errors: {},
+  touched: {}
+});
+
+// Auto-save function with debouncing
+let saveTimeout: NodeJS.Timeout | null = null;
+const autoSave = async (sessionId: string, state: FormState) => {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+  }
+  
+  saveTimeout = setTimeout(async () => {
+    try {
+      await updateSession(sessionId, convertToSupabaseFormat(state));
+      console.log('✅ Auto-saved to Supabase');
+    } catch (error) {
+      console.error('❌ Auto-save failed:', error);
+    }
+  }, 1000); // 1 second debounce
+};
+
 export const useFormStore = create<FormStore>((set, get) => ({
   state: initialState,
   
   initializeSession: async () => {
-    const savedState = loadFormState();
-    if (savedState) {
-      set({ state: { ...savedState, sessionId: savedState.sessionId || generateSessionId() } });
-    } else {
-      const newState = {
-        ...initialState,
-        sessionId: generateSessionId()
-      };
-      set({ state: newState });
-      saveFormState(newState);
+    try {
+      // Check for existing session ID in localStorage
+      const savedSessionId = localStorage.getItem('currentSessionId');
+      
+      if (savedSessionId) {
+        // Try to load existing session
+        const session = await getSession(savedSessionId);
+        if (session) {
+          const formState = convertFromSupabaseFormat(session);
+          set({ state: formState });
+          return;
+        }
+      }
+      
+      // Create new session
+      const newSessionId = generateSessionId();
+      const session = await createSession({
+        form_source: 'website'
+      });
+      
+      localStorage.setItem('currentSessionId', session.id);
+      
+      set({ 
+        state: { 
+          ...initialState, 
+          sessionId: session.id 
+        } 
+      });
+    } catch (error) {
+      console.error('Failed to initialize session:', error);
+      // Fallback to local state
+      const newSessionId = generateSessionId();
+      set({ 
+        state: { 
+          ...initialState, 
+          sessionId: newSessionId 
+        } 
+      });
     }
   },
 
@@ -87,7 +196,11 @@ export const useFormStore = create<FormStore>((set, get) => ({
         currentSubStep: 0,
         errors: {}
       };
-      saveFormState(newState);
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
@@ -99,11 +212,15 @@ export const useFormStore = create<FormStore>((set, get) => ({
         services,
         formPath: determineFormPath(services),
         errors: {
-          ...state.state.errors,
-          services: undefined
+          ...state.state.errors
         }
       };
-      saveFormState(newState);
+      delete newState.errors.services;
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
@@ -120,13 +237,12 @@ export const useFormStore = create<FormStore>((set, get) => ({
     console.log('Starting form submission...');
     
     // Set submitting state
-    set(state => {
+    set(currentState => {
       const newState = {
-        ...state.state,
+        ...currentState.state,
         isSubmitting: true,
         submissionError: null
       };
-      saveFormState(newState);
       return { state: newState };
     });
     
@@ -134,15 +250,19 @@ export const useFormStore = create<FormStore>((set, get) => ({
       const success = await submitToZapier(state);
       console.log('Submission completed:', success);
       
-      // Mark as submitted
-      set(state => {
+      // Mark as submitted and save to Supabase
+      set(currentState => {
         const newState = {
-          ...state.state,
+          ...currentState.state,
           formSubmitted: true,
           isSubmitting: false,
           submissionError: success ? null : 'Failed to submit form'
         };
-        saveFormState(newState);
+        
+        if (newState.sessionId) {
+          autoSave(newState.sessionId, newState);
+        }
+        
         return { state: newState };
       });
       
@@ -151,14 +271,18 @@ export const useFormStore = create<FormStore>((set, get) => ({
       console.error('Form submission error:', error);
       
       // Mark submission error but don't prevent navigation
-      set(state => {
+      set(currentState => {
         const newState = {
-          ...state.state,
+          ...currentState.state,
           formSubmitted: true,
           isSubmitting: false,
           submissionError: 'Failed to submit form'
         };
-        saveFormState(newState);
+        
+        if (newState.sessionId) {
+          autoSave(newState.sessionId, newState);
+        }
+        
         return { state: newState };
       });
       
@@ -193,12 +317,16 @@ export const useFormStore = create<FormStore>((set, get) => ({
         postalCode,
         insideServiceArea,
         errors: {
-          ...state.state.errors,
-          address: undefined,
-          postalCode: undefined
+          ...state.state.errors
         }
       };
-      saveFormState(newState);
+      delete newState.errors.address;
+      delete newState.errors.postalCode;
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
@@ -212,7 +340,11 @@ export const useFormStore = create<FormStore>((set, get) => ({
           [serviceId]: amount
         }
       };
-      saveFormState(newState);
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
@@ -226,7 +358,11 @@ export const useFormStore = create<FormStore>((set, get) => ({
           [serviceId]: details
         }
       };
-      saveFormState(newState);
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
@@ -237,7 +373,11 @@ export const useFormStore = create<FormStore>((set, get) => ({
         ...state.state,
         projectScope: scope
       };
-      saveFormState(newState);
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
@@ -251,7 +391,11 @@ export const useFormStore = create<FormStore>((set, get) => ({
           [serviceId]: { startDate, deadline }
         }
       };
-      saveFormState(newState);
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
@@ -262,7 +406,11 @@ export const useFormStore = create<FormStore>((set, get) => ({
         ...state.state,
         previousProvider: info
       };
-      saveFormState(newState);
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
@@ -273,7 +421,11 @@ export const useFormStore = create<FormStore>((set, get) => ({
         ...state.state,
         previousQuotes: hasQuotes
       };
-      saveFormState(newState);
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
@@ -284,7 +436,11 @@ export const useFormStore = create<FormStore>((set, get) => ({
         ...state.state,
         priceVsLongTerm: preference
       };
-      saveFormState(newState);
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
@@ -295,7 +451,11 @@ export const useFormStore = create<FormStore>((set, get) => ({
         ...state.state,
         siteChallenges: challenges
       };
-      saveFormState(newState);
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
@@ -306,7 +466,11 @@ export const useFormStore = create<FormStore>((set, get) => ({
         ...state.state,
         projectSuccessCriteria: criteria
       };
-      saveFormState(newState);
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
@@ -320,7 +484,11 @@ export const useFormStore = create<FormStore>((set, get) => ({
           ...info
         }
       };
-      saveFormState(newState);
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
@@ -337,19 +505,25 @@ export const useFormStore = create<FormStore>((set, get) => ({
         ...state.state,
         meetingBooked: booked
       };
-      saveFormState(newState);
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
       return { state: newState };
     });
   },
 
   resetForm: () => {
+    const newSessionId = generateSessionId();
     const newState = {
       ...initialState,
-      sessionId: generateSessionId(),
+      sessionId: newSessionId,
       isSubmitting: false,
       submissionError: null
     };
+    
+    localStorage.removeItem('currentSessionId');
     set({ state: newState });
-    saveFormState(newState);
   }
 }));

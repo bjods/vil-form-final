@@ -1,150 +1,135 @@
-import { useState, useEffect, useCallback } from 'react'
-import { FormSession, createSession, getSession, updateSession } from '../lib/supabase'
+import { useState, useEffect } from 'react'
+import { createSession, getSession, updateSession, FormSession } from '../lib/supabase'
+import { FormState } from '../types/form'
 
-interface UseSessionOptions {
-  sessionId?: string
-  autoCreate?: boolean
-  initialData?: Partial<FormSession>
-}
-
-interface SessionState {
-  session: FormSession | null
-  loading: boolean
+interface UseSessionReturn {
+  sessionId: string | null
+  isLoading: boolean
   error: string | null
-  isNew: boolean
+  createNewSession: (initialData?: Partial<FormState>) => Promise<string>
+  loadSession: (id: string) => Promise<FormSession | null>
+  updateCurrentSession: (data: Partial<FormSession>) => Promise<void>
 }
 
-export const useSession = (options: UseSessionOptions = {}) => {
-  const { sessionId, autoCreate = false, initialData = {} } = options
+export function useSession(): UseSessionReturn {
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
-  const [state, setState] = useState<SessionState>({
-    session: null,
-    loading: true,
-    error: null,
-    isNew: false
-  })
-
-  // Load existing session or create new one
-  const initializeSession = useCallback(async () => {
+  const createNewSession = async (initialData?: Partial<FormState>): Promise<string> => {
+    setIsLoading(true)
+    setError(null)
+    
     try {
-      setState(prev => ({ ...prev, loading: true, error: null }))
-
-      if (sessionId) {
-        // Load existing session
-        const existingSession = await getSession(sessionId)
-        if (existingSession) {
-          setState({
-            session: existingSession,
-            loading: false,
-            error: null,
-            isNew: false
-          })
-          return existingSession
-        } else {
-          setState(prev => ({ 
-            ...prev, 
-            loading: false, 
-            error: 'Session not found' 
-          }))
-          return null
-        }
-      } else if (autoCreate) {
-        // Create new session
-        const newSession = await createSession({
-          form_source: 'website',
-          ...initialData
-        })
-        setState({
-          session: newSession,
-          loading: false,
-          error: null,
-          isNew: true
-        })
-        return newSession
-      } else {
-        setState(prev => ({ ...prev, loading: false }))
-        return null
-      }
-    } catch (error) {
-      console.error('Session initialization error:', error)
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      }))
-      return null
-    }
-  }, [sessionId, autoCreate, initialData])
-
-  // Update session data
-  const updateSessionData = useCallback(async (data: Partial<FormSession>) => {
-    if (!state.session) return null
-
-    try {
-      const updatedSession = await updateSession(state.session.id, data)
-      setState(prev => ({ 
-        ...prev, 
-        session: updatedSession,
-        error: null 
-      }))
-      return updatedSession
-    } catch (error) {
-      console.error('Session update error:', error)
-      setState(prev => ({ 
-        ...prev, 
-        error: error instanceof Error ? error.message : 'Update failed' 
-      }))
-      return null
-    }
-  }, [state.session])
-
-  // Create a new session manually
-  const createNewSession = useCallback(async (data: Partial<FormSession> = {}) => {
-    try {
-      setState(prev => ({ ...prev, loading: true, error: null }))
-      
-      const newSession = await createSession({
+      const sessionData: Partial<FormSession> = {
         form_source: 'website',
-        ...data
-      })
+        ...(initialData && {
+          first_name: initialData.personalInfo?.firstName,
+          last_name: initialData.personalInfo?.lastName,
+          email: initialData.personalInfo?.email,
+          phone: initialData.personalInfo?.phone,
+          address: initialData.address,
+          postal_code: initialData.postalCode,
+          inside_service_area: initialData.insideServiceArea,
+          services: initialData.services,
+          service_details: initialData.serviceDetails,
+          budgets: initialData.budgets,
+          project_vision: initialData.projectScope,
+          success_criteria: initialData.projectSuccessCriteria,
+          referral_source: initialData.personalInfo?.referralSource,
+          previous_quotes: initialData.previousQuotes,
+          price_vs_long_term: initialData.priceVsLongTerm,
+          previous_provider: !!initialData.previousProvider,
+          site_challenges: initialData.siteChallenges,
+          start_deadlines: initialData.startDeadlines,
+          upload_link_requested: initialData.personalInfo?.textUploadLink,
+          photo_urls: initialData.personalInfo?.uploadedImages,
+          meeting_scheduled: initialData.meetingBooked,
+          initial_form_completed: initialData.formSubmitted
+        })
+      }
       
-      setState({
-        session: newSession,
-        loading: false,
-        error: null,
-        isNew: true
-      })
-      
-      return newSession
-    } catch (error) {
-      console.error('Session creation error:', error)
-      setState(prev => ({ 
-        ...prev, 
-        loading: false, 
-        error: error instanceof Error ? error.message : 'Creation failed' 
-      }))
+      const session = await createSession(sessionData)
+      setSessionId(session.id)
+      return session.id
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create session'
+      setError(errorMessage)
+      throw new Error(errorMessage)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  const loadSession = async (id: string): Promise<FormSession | null> => {
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      const session = await getSession(id)
+      if (session) {
+        setSessionId(session.id)
+      }
+      return session
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load session'
+      setError(errorMessage)
       return null
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  const updateCurrentSession = async (data: Partial<FormSession>): Promise<void> => {
+    if (!sessionId) {
+      throw new Error('No active session')
+    }
+    
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      await updateSession(sessionId, data)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update session'
+      setError(errorMessage)
+      throw new Error(errorMessage)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  // Load session from URL or localStorage on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const sessionParam = urlParams.get('session')
+    
+    if (sessionParam) {
+      loadSession(sessionParam)
+    } else {
+      // Check localStorage for existing session
+      const savedSessionId = localStorage.getItem('currentSessionId')
+      if (savedSessionId) {
+        setSessionId(savedSessionId)
+      }
     }
   }, [])
-
-  // Clear error
-  const clearError = useCallback(() => {
-    setState(prev => ({ ...prev, error: null }))
-  }, [])
-
-  // Initialize on mount or when sessionId changes
+  
+  // Save session ID to localStorage when it changes
   useEffect(() => {
-    initializeSession()
-  }, [initializeSession])
-
+    if (sessionId) {
+      localStorage.setItem('currentSessionId', sessionId)
+    } else {
+      localStorage.removeItem('currentSessionId')
+    }
+  }, [sessionId])
+  
   return {
-    session: state.session,
-    loading: state.loading,
-    error: state.error,
-    isNew: state.isNew,
-    updateSession: updateSessionData,
-    createSession: createNewSession,
-    refreshSession: initializeSession,
-    clearError
+    sessionId,
+    isLoading,
+    error,
+    createNewSession,
+    loadSession,
+    updateCurrentSession
   }
 } 
