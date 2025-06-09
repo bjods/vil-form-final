@@ -378,58 +378,93 @@ const AddressStep: React.FC = () => {
   const { state, setAddress } = useFormStore();
   const [isInServiceArea, setIsInServiceArea] = useState<boolean | null>(null);
   const [autocompleteInitialized, setAutocompleteInitialized] = useState(false);
+  const [isManualInput, setIsManualInput] = useState(false);
+  const autocompleteRef = React.useRef<any>(null);
 
   useEffect(() => {
+    // Check if Google Maps script is already loaded
+    if (window.google && window.google.maps && window.google.maps.places) {
+      initializeAutocomplete();
+      return;
+    }
+
+    // Only load script if not already present
+    const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', initializeAutocomplete);
+      return;
+    }
+
     // Load Google Places API
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    
+    if (!apiKey) {
+      console.warn('Google Maps API key not found. Address autocomplete will not work.');
+      return;
+    }
+
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
     script.async = true;
     script.defer = true;
-    document.head.appendChild(script);
 
-    script.onload = () => {
+    // Set up global callback
+    (window as any).initGoogleMaps = () => {
       initializeAutocomplete();
     };
 
+    document.head.appendChild(script);
+
     return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
+      // Clean up global callback
+      delete (window as any).initGoogleMaps;
     };
   }, []);
 
   const initializeAutocomplete = () => {
-    if (autocompleteInitialized) return;
+    if (autocompleteInitialized || !window.google || !window.google.maps || !window.google.maps.places) {
+      return;
+    }
     
     const input = document.getElementById('address-input') as HTMLInputElement;
-    if (!input || !window.google) return;
+    if (!input) return;
 
-    const autocomplete = new window.google.maps.places.Autocomplete(input, {
-      types: ['address'],
-      componentRestrictions: { country: 'ca' } // Restrict to Canada
-    });
+    try {
+      const autocomplete = new window.google.maps.places.Autocomplete(input, {
+        types: ['address'],
+        componentRestrictions: { country: 'ca' }, // Restrict to Canada
+        fields: ['formatted_address', 'address_components', 'geometry']
+      });
 
-    autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace();
-      if (place.formatted_address) {
-        // Extract postal code from place components
-        let postalCode = '';
-        if (place.address_components) {
-          const postalComponent = place.address_components.find(
-            (component: any) => component.types.includes('postal_code')
-          );
-          postalCode = postalComponent?.long_name || '';
-        }
+      autocompleteRef.current = autocomplete;
 
-        // Simple service area validation (you can enhance this)
-        const serviceAreaCheck = validateServiceArea(place.formatted_address, postalCode);
-        setIsInServiceArea(serviceAreaCheck);
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
         
-        setAddress(place.formatted_address, postalCode, serviceAreaCheck);
-      }
-    });
+        if (place.formatted_address) {
+          setIsManualInput(false);
+          
+          // Extract postal code from place components
+          let postalCode = '';
+          if (place.address_components) {
+            const postalComponent = place.address_components.find(
+              (component: any) => component.types.includes('postal_code')
+            );
+            postalCode = postalComponent?.long_name || '';
+          }
 
-    setAutocompleteInitialized(true);
+          // Simple service area validation
+          const serviceAreaCheck = validateServiceArea(place.formatted_address, postalCode);
+          setIsInServiceArea(serviceAreaCheck);
+          
+          setAddress(place.formatted_address, postalCode, serviceAreaCheck);
+        }
+      });
+
+      setAutocompleteInitialized(true);
+    } catch (error) {
+      console.error('Error initializing Google Places Autocomplete:', error);
+    }
   };
 
   const validateServiceArea = (address: string, postalCode: string): boolean => {
@@ -439,9 +474,17 @@ const AddressStep: React.FC = () => {
   };
 
   const handleManualAddressChange = (address: string) => {
+    setIsManualInput(true);
     // For manual input, assume service area is valid
     setIsInServiceArea(true);
     setAddress(address, '', true);
+  };
+
+  const handleInputFocus = () => {
+    // Clear any autocomplete selection when user starts typing manually
+    if (autocompleteRef.current && isManualInput) {
+      autocompleteRef.current.set('place', null);
+    }
   };
 
   return (
@@ -452,9 +495,21 @@ const AddressStep: React.FC = () => {
           id="address-input"
           value={state.address}
           onChange={(e) => handleManualAddressChange(e.target.value)}
+          onFocus={handleInputFocus}
           placeholder="Start typing your address..."
           className="mt-1"
+          autoComplete="off"
         />
+        {!import.meta.env.VITE_GOOGLE_MAPS_API_KEY && (
+          <p className="text-amber-600 text-sm mt-1">
+            ⚠️ Google Maps API key not configured. Manual address entry only.
+          </p>
+        )}
+        {isInServiceArea === false && (
+          <p className="text-red-500 text-sm mt-1">
+            This address may be outside our service area. Please contact us to confirm.
+          </p>
+        )}
       </div>
     </div>
   );
