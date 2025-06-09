@@ -11,6 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from '../ui/textarea';
 import { getServiceById, services } from '../../data/services';
 import { Service } from '../../types/form';
+import ServiceSelection from '../ServiceSelection';
+import ServiceDetailsSection from '../ServiceDetailsSection';
+
+// Google Maps types
+declare global {
+  interface Window {
+    google: any;
+  }
+}
 
 const referralSources = [
   'Direct Mail',
@@ -41,27 +50,11 @@ interface InitialFormProps {
   onComplete?: () => void;
 }
 
-// Start Page Component
-const StartPageStep: React.FC<{ onStart: () => void }> = ({ onStart }) => {
-  return (
-    <div className="text-center space-y-6">
-      <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-gray-900">Get Your Free Landscaping Quote</h2>
-        <p className="text-gray-600 text-lg">
-          Tell us about your project and we'll provide you with a personalized estimate.
-        </p>
-      </div>
-      <Button onClick={onStart} size="lg" className="px-8 py-3">
-        Get Started
-      </Button>
-    </div>
-  );
-};
-
 // Contact Info Step Component
-const ContactInfoStep: React.FC = () => {
+const ContactInfoStep: React.FC<{ onInteraction: () => void }> = ({ onInteraction }) => {
   const { state, setPersonalInfo } = useFormStore();
   const { personalInfo } = state;
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -80,11 +73,23 @@ const ContactInfoStep: React.FC = () => {
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!hasInteracted) {
+      setHasInteracted(true);
+      onInteraction();
+    }
     const rawValue = e.target.value.replace(/\D/g, '');
     if (rawValue.length <= 10) {
       const formatted = formatPhoneNumber(rawValue);
       setPersonalInfo({ phone: formatted });
     }
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    if (!hasInteracted) {
+      setHasInteracted(true);
+      onInteraction();
+    }
+    setPersonalInfo({ [field]: value });
   };
 
   return (
@@ -95,7 +100,7 @@ const ContactInfoStep: React.FC = () => {
           <Input
             id="first-name"
             value={personalInfo.firstName}
-            onChange={(e) => setPersonalInfo({ firstName: e.target.value })}
+            onChange={(e) => handleInputChange('firstName', e.target.value)}
             placeholder="John"
             className="mt-1"
           />
@@ -105,7 +110,7 @@ const ContactInfoStep: React.FC = () => {
           <Input
             id="last-name"
             value={personalInfo.lastName}
-            onChange={(e) => setPersonalInfo({ lastName: e.target.value })}
+            onChange={(e) => handleInputChange('lastName', e.target.value)}
             placeholder="Doe"
             className="mt-1"
           />
@@ -118,7 +123,7 @@ const ContactInfoStep: React.FC = () => {
           id="email"
           type="email"
           value={personalInfo.email}
-          onChange={(e) => setPersonalInfo({ email: e.target.value })}
+          onChange={(e) => handleInputChange('email', e.target.value)}
           placeholder="john.doe@example.com"
           className="mt-1"
         />
@@ -146,7 +151,7 @@ const ContactInfoStep: React.FC = () => {
         <Label htmlFor="referral-source">How did you find us?</Label>
         <Select
           value={personalInfo.referralSource || ''}
-          onValueChange={(value) => setPersonalInfo({ referralSource: value })}
+          onValueChange={(value) => handleInputChange('referralSource', value)}
         >
           <SelectTrigger id="referral-source" className="mt-1">
             <SelectValue placeholder="Select how you found us" />
@@ -164,98 +169,81 @@ const ContactInfoStep: React.FC = () => {
   );
 };
 
-// Address Step Component
+// Address Step Component with Google Autocomplete
 const AddressStep: React.FC = () => {
   const { state, setAddress } = useFormStore();
+  const [isInServiceArea, setIsInServiceArea] = useState<boolean | null>(null);
 
-  const handleAddressChange = (address: string) => {
-    // Simple service area validation - you can enhance this
-    const isInServiceArea = true; // For now, assume all areas are serviced
-    setAddress(address, state.postalCode, isInServiceArea);
+  useEffect(() => {
+    // Load Google Places API
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+
+    script.onload = () => {
+      initializeAutocomplete();
+    };
+
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, []);
+
+  const initializeAutocomplete = () => {
+    const input = document.getElementById('address-input') as HTMLInputElement;
+    if (!input || !window.google) return;
+
+    const autocomplete = new window.google.maps.places.Autocomplete(input, {
+      types: ['address'],
+      componentRestrictions: { country: 'ca' } // Restrict to Canada
+    });
+
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (place.formatted_address) {
+        // Extract postal code from place components
+        let postalCode = '';
+        if (place.address_components) {
+          const postalComponent = place.address_components.find(
+            (component: any) => component.types.includes('postal_code')
+          );
+          postalCode = postalComponent?.long_name || '';
+        }
+
+        // Simple service area validation (you can enhance this)
+        const serviceAreaCheck = validateServiceArea(place.formatted_address, postalCode);
+        setIsInServiceArea(serviceAreaCheck);
+        
+        setAddress(place.formatted_address, postalCode, serviceAreaCheck);
+      }
+    });
   };
 
-  const handlePostalCodeChange = (postalCode: string) => {
-    const isInServiceArea = true; // For now, assume all areas are serviced
-    setAddress(state.address, postalCode, isInServiceArea);
+  const validateServiceArea = (address: string, postalCode: string): boolean => {
+    // Simple validation - you can enhance this with actual service area logic
+    // For now, assume all areas are serviced
+    return true;
+  };
+
+  const handleManualAddressChange = (address: string) => {
+    // For manual input, assume service area is valid
+    setIsInServiceArea(true);
+    setAddress(address, '', true);
   };
 
   return (
     <div className="space-y-4">
       <div>
-        <Label htmlFor="address">Property Address</Label>
+        <Label htmlFor="address-input">Property Address</Label>
         <Input
-          id="address"
+          id="address-input"
           value={state.address}
-          onChange={(e) => handleAddressChange(e.target.value)}
-          placeholder="123 Main Street"
+          onChange={(e) => handleManualAddressChange(e.target.value)}
+          placeholder="Start typing your address..."
           className="mt-1"
         />
-      </div>
-      
-      <div>
-        <Label htmlFor="postal-code">Postal Code</Label>
-        <Input
-          id="postal-code"
-          value={state.postalCode}
-          onChange={(e) => handlePostalCodeChange(e.target.value)}
-          placeholder="A1A 1A1"
-          className="mt-1"
-        />
-      </div>
-
-      {state.address && state.postalCode && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-          <p className="text-green-700 text-sm">✓ Great! We service your area.</p>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Service Selection Step Component
-const ServiceSelectionStep: React.FC = () => {
-  const { state, setServices } = useFormStore();
-
-  const handleServiceToggle = (serviceId: string) => {
-    const newServices = state.services.includes(serviceId)
-      ? state.services.filter(id => id !== serviceId)
-      : [...state.services, serviceId];
-    setServices(newServices);
-  };
-
-  return (
-    <div className="space-y-4">
-      <p className="text-gray-600">Select the services you're interested in:</p>
-      <div className="grid gap-3">
-        {services.map((service: Service) => (
-          <div
-            key={service.id}
-            className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-              state.services.includes(service.id)
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300'
-            }`}
-            onClick={() => handleServiceToggle(service.id)}
-          >
-            <div className="flex items-start space-x-3">
-              <Checkbox
-                checked={state.services.includes(service.id)}
-                onChange={() => handleServiceToggle(service.id)}
-                className="mt-1"
-              />
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900">{service.name}</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  {service.id === 'landscape-design-build' && 'Complete landscape design and construction services'}
-                  {service.id === 'landscape-enhancement' && 'Improve your existing landscape with targeted enhancements'}
-                  {service.id === 'lawn-maintenance' && 'Regular lawn care and maintenance services'}
-                  {service.id === 'snow-management' && 'Winter snow removal and management services'}
-                  {service.id === 'other' && 'Tell us about your specific landscaping needs'}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -263,7 +251,7 @@ const ServiceSelectionStep: React.FC = () => {
 
 // Project Details Step Component
 const ProjectDetailsStep: React.FC = () => {
-  const { state, setServiceDetails, setProjectScope, setBudget, setStartDeadline } = useFormStore();
+  const { state, setProjectScope, setBudget, setStartDeadline } = useFormStore();
   
   const projectServices = state.services.filter(serviceId => 
     ['landscape-design-build', 'landscape-enhancement'].includes(serviceId)
@@ -271,32 +259,9 @@ const ProjectDetailsStep: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Service Details */}
-      <div>
-        <Label className="text-base font-medium">Service Details</Label>
-        <p className="text-sm text-gray-600 mb-3">Tell us more about what you're looking for</p>
-        <div className="space-y-3">
-          {projectServices.map(serviceId => {
-            const service = getServiceById(serviceId);
-            if (!service) return null;
-            
-            return (
-              <div key={serviceId}>
-                <Label htmlFor={`details-${serviceId}`}>{service.name} Details</Label>
-                <Textarea
-                  id={`details-${serviceId}`}
-                  value={state.serviceDetails[serviceId]?.details || ''}
-                  onChange={(e) => setServiceDetails(serviceId, { details: e.target.value })}
-                  placeholder={`Describe your ${service.name.toLowerCase()} needs...`}
-                  className="mt-1"
-                  rows={3}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
+      {/* Service Details using original component */}
+      <ServiceDetailsSection />
+      
       {/* Project Vision */}
       <div>
         <Label htmlFor="project-vision" className="text-base font-medium">Describe Your Vision</Label>
@@ -373,7 +338,7 @@ const ProjectDetailsStep: React.FC = () => {
 
 // Maintenance Details Step Component
 const MaintenanceDetailsStep: React.FC = () => {
-  const { state, setServiceDetails, setSiteChallenges, setStartDeadline } = useFormStore();
+  const { state, setSiteChallenges, setStartDeadline } = useFormStore();
   
   const maintenanceServices = state.services.filter(serviceId => 
     ['lawn-maintenance', 'snow-management'].includes(serviceId)
@@ -381,32 +346,9 @@ const MaintenanceDetailsStep: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Service Details */}
-      <div>
-        <Label className="text-base font-medium">Service Details</Label>
-        <p className="text-sm text-gray-600 mb-3">Tell us about your maintenance needs</p>
-        <div className="space-y-3">
-          {maintenanceServices.map(serviceId => {
-            const service = getServiceById(serviceId);
-            if (!service) return null;
-            
-            return (
-              <div key={serviceId}>
-                <Label htmlFor={`details-${serviceId}`}>{service.name} Details</Label>
-                <Textarea
-                  id={`details-${serviceId}`}
-                  value={state.serviceDetails[serviceId]?.details || ''}
-                  onChange={(e) => setServiceDetails(serviceId, { details: e.target.value })}
-                  placeholder={`Describe your ${service.name.toLowerCase()} requirements...`}
-                  className="mt-1"
-                  rows={3}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
+      {/* Service Details using original component */}
+      <ServiceDetailsSection />
+      
       {/* Site Challenges */}
       <div>
         <Label htmlFor="site-challenges" className="text-base font-medium">Site Challenges</Label>
@@ -549,10 +491,10 @@ const UploadPhotosStep: React.FC<{
 
 const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
   const navigate = useNavigate();
-  const { state, setPersonalInfo, submitForm } = useFormStore();
+  const { state, setPersonalInfo, submitForm, initializeSession } = useFormStore();
   const [currentStep, setCurrentStep] = useState(0);
   const [isValid, setIsValid] = useState(false);
-  const [isStarted, setIsStarted] = useState(false);
+  const [sessionInitialized, setSessionInitialized] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [textUploadRequested, setTextUploadRequested] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -570,7 +512,6 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
   // Define the step flow based on selected services
   const getSteps = () => {
     const baseSteps = [
-      { id: 'start', title: 'Get Started', component: 'start' },
       { id: 'contact', title: 'Contact Information', component: 'contact' },
       { id: 'address', title: 'Property Address', component: 'address' },
       { id: 'services', title: 'Service Selection', component: 'services' }
@@ -615,14 +556,19 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
     return emailRegex.test(email);
   };
 
+  // Handle session initialization when user first interacts
+  const handleSessionInitialization = async () => {
+    if (!sessionInitialized) {
+      await initializeSession();
+      setSessionInitialized(true);
+    }
+  };
+
   // Validation logic for each step
   useEffect(() => {
     let valid = false;
     
     switch (currentStepData?.id) {
-      case 'start':
-        valid = isStarted;
-        break;
       case 'contact':
         const phoneDigits = state.personalInfo.phone.replace(/\D/g, '');
         valid = !!(state.personalInfo.firstName && 
@@ -631,7 +577,7 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
                   phoneDigits.length === 10);
         break;
       case 'address':
-        valid = !!(state.address && state.postalCode);
+        valid = !!(state.address);
         break;
       case 'services':
         valid = state.services.length > 0;
@@ -661,7 +607,7 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
     }
     
     setIsValid(valid);
-  }, [currentStepData, state, isStarted, uploadedImages, textUploadRequested]);
+  }, [currentStepData, state, uploadedImages, textUploadRequested]);
 
   const handleNext = async () => {
     if (currentStep < steps.length - 1) {
@@ -676,11 +622,6 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
-  };
-
-  const handleStart = () => {
-    setIsStarted(true);
-    setCurrentStep(1); // Move to contact info
   };
 
   const handleUpload = (urls: string[]) => {
@@ -715,14 +656,12 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
 
   const renderStepContent = () => {
     switch (currentStepData?.component) {
-      case 'start':
-        return <StartPageStep onStart={handleStart} />;
       case 'contact':
-        return <ContactInfoStep />;
+        return <ContactInfoStep onInteraction={handleSessionInitialization} />;
       case 'address':
         return <AddressStep />;
       case 'services':
-        return <ServiceSelectionStep />;
+        return <ServiceSelection />;
       case 'project-details':
         return <ProjectDetailsStep />;
       case 'maintenance-details':
@@ -742,13 +681,9 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
   };
 
   const renderNavigation = () => {
-    if (currentStepData?.id === 'start') {
-      return null; // Start page handles its own navigation
-    }
-
     return (
       <div className="flex justify-between pt-6 border-t border-gray-200">
-        <Button variant="outline" onClick={handleBack}>
+        <Button variant="outline" onClick={handleBack} disabled={currentStep === 0}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
@@ -775,11 +710,9 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
       <Card className="h-full">
         <CardHeader>
           <CardTitle>{currentStepData?.title}</CardTitle>
-          {currentStepData?.id !== 'start' && (
-            <CardDescription>
-              Step {currentStep} of {steps.length - 1}
-            </CardDescription>
-          )}
+          <CardDescription>
+            Step {currentStep + 1} of {steps.length}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 overflow-auto">
           {renderStepContent()}
