@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useFormStore } from '../../store/formStore';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/button';
@@ -35,13 +35,13 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
     ['landscape-design-build', 'landscape-enhancement'].includes(serviceId)
   );
 
-  // Build dynamic pages based on selected services
-  const getPages = () => {
-    const pages = [];
+  // Memoize pages to prevent infinite re-renders
+  const pages = useMemo(() => {
+    const pageList = [];
 
     // Add maintenance details page if maintenance services are selected
     if (hasMaintenanceServices) {
-      pages.push({
+      pageList.push({
         id: 'maintenance-details',
         title: 'Maintenance Details',
         description: 'Tell us about your maintenance service preferences',
@@ -62,7 +62,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
 
     // Add project details page if project services are selected
     if (hasProjectServices) {
-      pages.push({
+      pageList.push({
         id: 'project-details',
         title: 'Project Details',
         description: 'Help us understand your project goals and requirements',
@@ -82,7 +82,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
     }
 
     // Always add booking page
-    pages.push({
+    pageList.push({
       id: 'booking',
       title: 'Schedule Your Consultation',
       description: 'Choose a time that works best for you',
@@ -95,26 +95,15 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
       ]
     });
 
-    return pages;
-  };
-
-  const pages = getPages();
+    return pageList;
+  }, [hasMaintenanceServices, hasProjectServices]);
 
   // If no relevant services are selected, redirect to home
   useEffect(() => {
     if (!hasMaintenanceServices && !hasProjectServices) {
-      console.log('No relevant services selected, redirecting to home');
       navigate('/');
     }
   }, [hasMaintenanceServices, hasProjectServices, navigate]);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('FollowUpForm - Selected services:', state.services);
-    console.log('FollowUpForm - Has maintenance services:', hasMaintenanceServices);
-    console.log('FollowUpForm - Has project services:', hasProjectServices);
-    console.log('FollowUpForm - Generated pages:', pages.map(p => p.id));
-  }, [state.services, hasMaintenanceServices, hasProjectServices, pages]);
 
   const handleValidationChange = (pageIndex: number, componentKey: string, isValid: boolean) => {
     setValidationStates(prev => ({

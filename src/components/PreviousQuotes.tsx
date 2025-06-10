@@ -24,8 +24,6 @@ const PreviousQuotes: React.FC<PreviousQuotesProps> = ({ onValidationChange }) =
   
   useEffect(() => {
     const isValid = state.previousQuotes !== undefined;
-    console.log('PreviousQuotes - Selection:', state.previousQuotes);
-    console.log('PreviousQuotes - Is valid:', isValid);
     onValidationChange?.(isValid);
   }, [state.previousQuotes, onValidationChange]);
   

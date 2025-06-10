@@ -11,9 +11,7 @@ const PreviousProvider: React.FC<PreviousProviderProps> = ({ onValidationChange 
   const { state, setPreviousProvider } = useFormStore();
   
   useEffect(() => {
-    const isValid = state.previousProvider?.trim().length > 0;
-    console.log('PreviousProvider - Text length:', state.previousProvider?.length);
-    console.log('PreviousProvider - Is valid:', isValid);
+    const isValid = (state.previousProvider?.trim().length || 0) > 0;
     onValidationChange?.(isValid);
   }, [state.previousProvider, onValidationChange]);
   

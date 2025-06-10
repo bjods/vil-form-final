@@ -24,8 +24,6 @@ const PriceVsLongTerm: React.FC<PriceVsLongTermProps> = ({ onValidationChange })
   
   useEffect(() => {
     const isValid = state.priceVsLongTerm !== undefined;
-    console.log('PriceVsLongTerm - Selection:', state.priceVsLongTerm);
-    console.log('PriceVsLongTerm - Is valid:', isValid);
     onValidationChange?.(isValid);
   }, [state.priceVsLongTerm, onValidationChange]);
   

@@ -11,9 +11,7 @@ const ProjectSuccessCriteria: React.FC<ProjectSuccessCriteriaProps> = ({ onValid
   const { state, setProjectSuccessCriteria } = useFormStore();
   
   useEffect(() => {
-    const isValid = state.projectSuccessCriteria?.trim().length > 0;
-    console.log('ProjectSuccessCriteria - Text length:', state.projectSuccessCriteria?.length);
-    console.log('ProjectSuccessCriteria - Is valid:', isValid);
+    const isValid = (state.projectSuccessCriteria?.trim().length || 0) > 0;
     onValidationChange?.(isValid);
   }, [state.projectSuccessCriteria, onValidationChange]);
   
