@@ -82,7 +82,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
       });
     }
 
-    // Always add booking page
+    // Always add booking page - FORCE IT TO BE INCLUDED
     pageList.push({
       id: 'booking',
       title: 'Schedule Your Consultation',
@@ -95,6 +95,8 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
         }
       ]
     });
+
+    console.log('Pages generated:', pageList.map(p => p.id));
 
     return pageList;
   }, [hasMaintenanceServices, hasProjectServices]);
@@ -250,7 +252,10 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
     pageIds: pages.map(p => p.id),
     currentPageId: currentPageData?.id,
     hasMaintenanceServices,
-    hasProjectServices
+    hasProjectServices,
+    services: state.services,
+    isBookingPage: currentPageData?.id === 'booking',
+    showNextButton: currentPageData?.id !== 'booking' && currentPage < pages.length - 1
   });
 
   return (
@@ -323,36 +328,34 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
               </div>
               
               {/* Navigation buttons */}
-              {currentPage < pages.length - 1 && (
-                <div className="flex-shrink-0 border-t border-gray-200 pt-4 mt-4 -mx-1">
-                  <div className="flex justify-between">
-                    {currentPage === 0 ? (
-                      <div></div>
-                    ) : (
-                      <Button
-                        onClick={handlePrevious}
-                        variant="outline"
-                        className="flex items-center gap-2"
-                      >
-                        <ArrowLeft className="w-4 h-4" />
-                        Back
-                      </Button>
-                    )}
+              <div className="flex-shrink-0 border-t border-gray-200 pt-4 mt-4 -mx-1">
+                <div className="flex justify-between">
+                  {currentPage === 0 ? (
+                    <div></div>
+                  ) : (
+                    <Button
+                      onClick={handlePrevious}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      Back
+                    </Button>
+                  )}
 
-                    {/* Don't show Next button on booking page since Calendly handles completion */}
-                    {currentPageData.id !== 'booking' && (
-                      <Button
-                        onClick={handleNext}
-                        disabled={!canProceed()}
-                        className="flex items-center gap-2"
-                      >
-                        Next
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  {/* Show Next button only if not on booking page and not on last page */}
+                  {currentPageData.id !== 'booking' && currentPage < pages.length - 1 && (
+                    <Button
+                      onClick={handleNext}
+                      disabled={!canProceed()}
+                      className="flex items-center gap-2"
+                    >
+                      Next
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
-              )}
+              </div>
             </CardContent>
           </Card>
         </div>
