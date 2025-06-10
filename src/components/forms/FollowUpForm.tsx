@@ -115,6 +115,12 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
 
   const isPageValid = (pageIndex: number) => {
     const page = pages[pageIndex];
+    
+    // Special handling for booking page - always allow proceeding since Calendly handles its own validation
+    if (page.id === 'booking') {
+      return true;
+    }
+    
     return page.components.every(comp => 
       validationStates[`${pageIndex}-${comp.key}`] === true
     );
@@ -237,6 +243,16 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
 
   const currentPageData = pages[currentPage];
 
+  // Debug logging
+  console.log('FollowUpForm Debug:', {
+    currentPage,
+    totalPages: pages.length,
+    pageIds: pages.map(p => p.id),
+    currentPageId: currentPageData?.id,
+    hasMaintenanceServices,
+    hasProjectServices
+  });
+
   return (
     <>
       <style>
@@ -274,51 +290,13 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
       </style>
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-2xl mx-auto p-4 py-8">
-          {/* Progress indicator */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              {pages.map((page, index) => (
-                <div
-                  key={page.id}
-                  className={`flex items-center ${index < pages.length - 1 ? 'flex-1' : ''}`}
-                >
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      index < currentPage
-                        ? 'bg-green-500 text-white'
-                        : index === currentPage
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-200 text-gray-600'
-                    }`}
-                  >
-                    {index < currentPage ? (
-                      <CheckCircle2 className="w-4 h-4" />
-                    ) : (
-                      index + 1
-                    )}
-                  </div>
-                  {index < pages.length - 1 && (
-                    <div
-                      className={`flex-1 h-1 mx-4 ${
-                        index < currentPage ? 'bg-green-500' : 'bg-gray-200'
-                      }`}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="text-center">
-              <h2 className="text-sm font-medium text-gray-500">
-                Step {currentPage + 1} of {pages.length}
-              </h2>
-            </div>
-          </div>
-
           {/* Current page content */}
           <Card className="h-full flex flex-col">
             <CardHeader className="flex-shrink-0">
               <CardTitle>{currentPageData.title}</CardTitle>
-              <CardDescription>{currentPageData.description}</CardDescription>
+              <CardDescription>
+                Step {currentPage + 1} of {pages.length} - {currentPageData.description}
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col min-h-0 p-6">
               <div className="flex-1 overflow-y-auto px-1">
@@ -361,14 +339,17 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
                       </Button>
                     )}
 
-                    <Button
-                      onClick={handleNext}
-                      disabled={!canProceed()}
-                      className="flex items-center gap-2"
-                    >
-                      Next
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
+                    {/* Don't show Next button on booking page since Calendly handles completion */}
+                    {currentPageData.id !== 'booking' && (
+                      <Button
+                        onClick={handleNext}
+                        disabled={!canProceed()}
+                        className="flex items-center gap-2"
+                      >
+                        Next
+                        <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               )}
