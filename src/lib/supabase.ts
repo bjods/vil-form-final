@@ -58,6 +58,12 @@ export interface FormSession {
   form_source?: string // 'website', 'agent', 'phone'
   agent_name?: string
   
+  // Embed tracking (for WordPress/external sites)
+  embed_source_url?: string    // URL where form was embedded
+  embed_referrer?: string      // Referrer when form loaded
+  embed_url_params?: string    // URL parameters when form loaded
+  embed_container_id?: string  // Container element ID
+  
   // Additional fields
   previous_quotes?: boolean
   price_vs_long_term?: string // 'price' or 'long-term'

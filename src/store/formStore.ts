@@ -24,6 +24,7 @@ interface FormStore {
   requestUploadLink: () => Promise<string | null>;
   submitForm: () => Promise<boolean>;
   setMeetingBooked: (booked: boolean) => void;
+  setEmbedData: (embedData: FormState['embedData']) => void;
   resetForm: () => void;
   clearErrors: () => void;
 }
@@ -87,7 +88,12 @@ const convertToSupabaseFormat = (state: FormState): Partial<FormSession> => ({
   upload_link_requested: state.personalInfo.textUploadLink,
   photo_urls: state.personalInfo.uploadedImages.length > 0 ? state.personalInfo.uploadedImages : undefined,
   meeting_scheduled: state.meetingBooked,
-  initial_form_completed: state.formSubmitted
+  initial_form_completed: state.formSubmitted,
+  // Embed tracking data
+  embed_source_url: state.embedData?.sourceUrl,
+  embed_referrer: state.embedData?.referrer,
+  embed_url_params: state.embedData?.urlParams,
+  embed_container_id: state.embedData?.embedContainer
 });
 
 // Helper function to convert Supabase format to FormState
@@ -121,6 +127,13 @@ const convertFromSupabaseFormat = (session: FormSession): FormState => ({
   uploadLinkGenerated: false,
   formSubmitted: session.initial_form_completed || false,
   meetingBooked: session.meeting_scheduled || false,
+  // Embed tracking data
+  embedData: session.embed_source_url ? {
+    sourceUrl: session.embed_source_url,
+    referrer: session.embed_referrer || '',
+    urlParams: session.embed_url_params || '',
+    embedContainer: session.embed_container_id
+  } : undefined,
   isSubmitting: false,
   submissionError: null,
   errors: {},
@@ -168,8 +181,15 @@ export const useFormStore = create<FormStore>((set, get) => ({
       
       // Create new session only if no specific session was requested
       if (!specificSessionId) {
+        // Check for embed data
+        const embedData = (window as any).VL_EMBED_DATA;
+        
         const session = await createSession({
-          form_source: 'website'
+          form_source: embedData ? 'embed' : 'website',
+          embed_source_url: embedData?.sourceUrl,
+          embed_referrer: embedData?.referrer,
+          embed_url_params: embedData?.urlParams,
+          embed_container_id: embedData?.embedContainer
         });
         
         localStorage.setItem('currentSessionId', session.id);
@@ -535,6 +555,21 @@ export const useFormStore = create<FormStore>((set, get) => ({
     });
   },
 
+  setEmbedData: (embedData) => {
+    set(state => {
+      const newState = {
+        ...state.state,
+        embedData
+      };
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
+      return { state: newState };
+    });
+  },
+
   resetForm: () => {
     const newSessionId = generateSessionId();
     const newState = {
@@ -546,5 +581,15 @@ export const useFormStore = create<FormStore>((set, get) => ({
     
     localStorage.removeItem('currentSessionId');
     set({ state: newState });
+  },
+
+  clearErrors: () => {
+    set(state => ({
+      state: {
+        ...state.state,
+        errors: {},
+        touched: {}
+      }
+    }));
   }
 }));

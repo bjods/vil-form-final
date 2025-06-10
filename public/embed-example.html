@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VL Form Embed Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .example-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .vl-form-embed {
+            min-height: 600px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background: #fafafa;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>VL Form Embed Example</h1>
+    
+    <div class="example-section">
+        <h2>How to Embed in WordPress</h2>
+        <p>Add this code to your WordPress page or post (in HTML mode):</p>
+        <pre><code>&lt;!-- VL Form Container --&gt;
+&lt;div class="vl-form-embed"&gt;
+    &lt;p&gt;Loading form...&lt;/p&gt;
+&lt;/div&gt;
+
+&lt;!-- VL Form Embed Script --&gt;
+&lt;script src="https://vil-form-final.vercel.app/embed.js"&gt;&lt;/script&gt;</code></pre>
+    </div>
+
+    <div class="example-section">
+        <h2>Advanced Configuration</h2>
+        <p>You can customize the base URL by setting a configuration object before loading the script:</p>
+        <pre><code>&lt;script&gt;
+window.VL_FORM_CONFIG = {
+    baseUrl: 'https://your-custom-domain.com'
+};
+&lt;/script&gt;
+&lt;script src="https://vil-form-final.vercel.app/embed.js"&gt;&lt;/script&gt;</code></pre>
+    </div>
+
+    <div class="example-section">
+        <h2>Multiple Forms on Same Page</h2>
+        <p>You can embed multiple forms by adding multiple containers:</p>
+        <pre><code>&lt;div class="vl-form-embed" id="form-1"&gt;&lt;/div&gt;
+&lt;div class="vl-form-embed" id="form-2"&gt;&lt;/div&gt;
+&lt;script src="https://vil-form-final.vercel.app/embed.js"&gt;&lt;/script&gt;</code></pre>
+    </div>
+
+    <div class="example-section">
+        <h2>Live Example</h2>
+        <p>Here's a working example of the embedded form:</p>
+        <div class="vl-form-embed">
+            <p>Loading VL Form...</p>
+        </div>
+    </div>
+
+    <div class="example-section">
+        <h2>Features</h2>
+        <ul>
+            <li>✅ Automatic URL tracking (source page, referrer, URL parameters)</li>
+            <li>✅ Supabase backend integration</li>
+            <li>✅ Auto-save functionality</li>
+            <li>✅ Multi-step form with validation</li>
+            <li>✅ Photo upload capabilities</li>
+            <li>✅ Calendly integration for meeting booking</li>
+            <li>✅ Responsive design</li>
+            <li>✅ Works on any website (WordPress, Shopify, custom sites)</li>
+        </ul>
+    </div>
+
+    <!-- Load the actual form -->
+    <script src="https://vil-form-final.vercel.app/embed.js"></script>
+</body>
+</html> 

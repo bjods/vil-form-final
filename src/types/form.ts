@@ -72,6 +72,13 @@ export interface FormState {
     referralSource?: string;
     uploadedImages: string[];
   };
+  // URL tracking for embedded forms
+  embedData?: {
+    sourceUrl: string;      // window.location.href where form was embedded
+    referrer: string;       // document.referrer
+    urlParams: string;      // window.location.search
+    embedContainer?: string; // ID of the container element
+  };
   uploadLinkGenerated: boolean;
   formSubmitted: boolean;
   meetingBooked: boolean;
