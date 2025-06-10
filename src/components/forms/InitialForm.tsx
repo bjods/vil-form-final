@@ -591,7 +591,10 @@ const ProjectDetailsStep: React.FC = () => {
                     setStartDeadline(serviceId, e.target.value, '');
                   });
                 }}
-                className="w-4 h-4 text-yellow-600 focus:ring-yellow-500"
+                className="w-4 h-4 text-yellow-600 focus:ring-yellow-500 focus:ring-2 accent-yellow-600"
+                style={{
+                  accentColor: '#d97706' // yellow-600 color
+                }}
               />
               <span className="capitalize text-sm text-gray-900">{option}</span>
             </label>
@@ -1067,8 +1070,42 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
 
   // Fixed container size for embedding
   return (
-    <div className="w-full max-w-2xl mx-auto" style={{ height: '600px' }}>
-      <Card className="h-full flex flex-col">
+    <>
+      <style>
+        {`
+          /* Custom date picker styling */
+          input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.6) sepia(1) saturate(5) hue-rotate(35deg);
+          }
+          
+          input[type="date"]:focus::-webkit-calendar-picker-indicator {
+            filter: invert(0.4) sepia(1) saturate(5) hue-rotate(35deg);
+          }
+          
+          /* Date picker popup styling - webkit browsers */
+          input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+            color: #374151;
+          }
+          
+          input[type="date"]::-webkit-datetime-edit-text {
+            color: #6b7280;
+          }
+          
+          input[type="date"]::-webkit-datetime-edit-month-field,
+          input[type="date"]::-webkit-datetime-edit-day-field,
+          input[type="date"]::-webkit-datetime-edit-year-field {
+            color: #374151;
+          }
+          
+          /* Focus styles for date inputs */
+          input[type="date"]:focus {
+            border-color: #d97706;
+            box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+          }
+        `}
+      </style>
+      <div className="w-full max-w-2xl mx-auto" style={{ height: '600px' }}>
+        <Card className="h-full flex flex-col">
         <CardHeader className="flex-shrink-0">
           <CardTitle>{isSubmitted ? 'Complete!' : currentStepData?.title}</CardTitle>
           <CardDescription>
@@ -1089,6 +1126,7 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 };
 
