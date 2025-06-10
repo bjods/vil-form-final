@@ -19,11 +19,20 @@ interface FollowUpFormProps {
 }
 
 const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
-  const { state, submitForm } = useFormStore();
+  const { state, submitForm, setMeetingBooked } = useFormStore();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(0);
   const [validationStates, setValidationStates] = useState<Record<string, boolean>>({});
   const [showThankYou, setShowThankYou] = useState(false);
+
+  // Reset meeting booked status when follow-up form loads
+  // This ensures we start fresh for the follow-up flow
+  useEffect(() => {
+    if (state.meetingBooked) {
+      console.log('Resetting meetingBooked to false for follow-up form');
+      setMeetingBooked(false);
+    }
+  }, []);
 
   // Check if user has photos uploaded
   const hasPhotos = state.personalInfo.uploadedImages.length > 0;
