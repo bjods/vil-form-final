@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { getServiceById } from '../../data/services';
+import { supabase } from '../../lib/supabase';
 
 // Import existing components
 import PreviousProvider from '../PreviousProvider';
@@ -137,17 +138,37 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
 
   const handleFormComplete = async () => {
     try {
+      // Update the follow-up form completion status in Supabase
+      if (state.sessionId) {
+        const { error } = await supabase
+          .from('form_sessions')
+          .update({
+            follow_up_form_completed: true,
+            meeting_scheduled: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', state.sessionId);
+          
+        if (error) {
+          console.error('Error updating follow-up form completion:', error);
+          throw error;
+        }
+      }
+      
+      // Also call the regular submit form to update other fields
       await submitForm();
+      
       // Navigate to thank you page
       setCurrentPage(pages.length); // This will show the thank you page
     } catch (error) {
-      console.error('Error submitting form:', error);
+      console.error('Error completing follow-up form:', error);
     }
   };
 
   // Listen for meeting booked event to trigger form completion
   useEffect(() => {
     if (state.meetingBooked && currentPage === pages.length - 1) {
+      console.log('Meeting booked detected, completing follow-up form...');
       handleFormComplete();
     }
   }, [state.meetingBooked, currentPage]);
