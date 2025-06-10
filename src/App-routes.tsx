@@ -5,10 +5,8 @@ import { useFormStore } from './store/formStore';
 // Import form components
 import InitialForm from './components/forms/InitialForm';
 import AgentForm from './components/forms/AgentForm';
+import FollowUpForm from './components/forms/FollowUpForm';
 import UploadPage from './components/UploadPage';
-
-// Import existing App for follow-up form
-import App from './App';
 
 interface SessionLoaderProps {
   children: React.ReactNode;
@@ -71,10 +69,7 @@ const SessionLoader: React.FC<SessionLoaderProps> = ({ children }) => {
   return <>{children}</>;
 };
 
-// Wrapper component for the follow-up form that uses the existing detailed form
-const FollowUpForm: React.FC = () => {
-  return <App />;
-};
+
 
 const AppRoutes: React.FC = () => {
   return (
@@ -138,12 +133,12 @@ const AppRoutes: React.FC = () => {
           } 
         />
         
-        {/* Fallback to existing form for any other routes */}
+        {/* Fallback to home page for any other routes */}
         <Route 
           path="*" 
           element={
             <SessionLoader>
-              <FollowUpForm />
+              <InitialForm />
             </SessionLoader>
           } 
         />
