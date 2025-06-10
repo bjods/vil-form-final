@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 
 interface FormStore {
   state: FormState;
-  initializeSession: () => Promise<void>;
+  initializeSession: (specificSessionId?: string) => Promise<void>;
   setStep: (step: number) => void;
   setSubStep: (subStep: number) => void;
   setServices: (services: string[]) => void;
@@ -147,38 +147,51 @@ const autoSave = async (sessionId: string, state: FormState) => {
 export const useFormStore = create<FormStore>((set, get) => ({
   state: initialState,
   
-  initializeSession: async () => {
+  initializeSession: async (specificSessionId?: string) => {
     try {
-      // Check for existing session ID in localStorage
-      const savedSessionId = localStorage.getItem('currentSessionId');
+      // Use specific session ID if provided, otherwise check localStorage
+      const targetSessionId = specificSessionId || localStorage.getItem('currentSessionId');
       
-      if (savedSessionId) {
+      if (targetSessionId) {
         // Try to load existing session
-        const session = await getSession(savedSessionId);
+        const session = await getSession(targetSessionId);
         if (session) {
           const formState = convertFromSupabaseFormat(session);
+          localStorage.setItem('currentSessionId', session.id);
           set({ state: formState });
           return;
+        } else if (specificSessionId) {
+          // If a specific session was requested but not found, throw an error
+          throw new Error(`Session ${specificSessionId} not found`);
         }
       }
       
-      // Create new session
-      const newSessionId = generateSessionId();
-      const session = await createSession({
-        form_source: 'website'
-      });
-      
-      localStorage.setItem('currentSessionId', session.id);
-      
-      set({ 
-        state: { 
-          ...initialState, 
-          sessionId: session.id 
-        } 
-      });
+      // Create new session only if no specific session was requested
+      if (!specificSessionId) {
+        const session = await createSession({
+          form_source: 'website'
+        });
+        
+        localStorage.setItem('currentSessionId', session.id);
+        
+        set({ 
+          state: { 
+            ...initialState, 
+            sessionId: session.id 
+          } 
+        });
+      } else {
+        throw new Error(`Session ${specificSessionId} not found`);
+      }
     } catch (error) {
       console.error('Failed to initialize session:', error);
-      // Fallback to local state
+      
+      if (specificSessionId) {
+        // If a specific session was requested but failed, re-throw the error
+        throw error;
+      }
+      
+      // Fallback to local state only for general initialization
       const newSessionId = generateSessionId();
       set({ 
         state: { 
