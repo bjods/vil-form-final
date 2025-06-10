@@ -23,6 +23,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(0);
   const [validationStates, setValidationStates] = useState<Record<string, boolean>>({});
+  const [showThankYou, setShowThankYou] = useState(false);
 
   // Check if user has photos uploaded
   const hasPhotos = state.personalInfo.uploadedImages.length > 0;
@@ -167,7 +168,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
       await submitForm();
       
       // Navigate to thank you page
-      setCurrentPage(pages.length); // This will show the thank you page
+      setShowThankYou(true);
     } catch (error) {
       console.error('Error completing follow-up form:', error);
     }
@@ -181,8 +182,8 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
     }
   }, [state.meetingBooked, currentPage]);
 
-  // Thank you page
-  if (currentPage >= pages.length) {
+  // Thank you page - only show when meeting is booked and form is completed
+  if (showThankYou) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="w-full max-w-2xl mx-auto">
@@ -255,7 +256,9 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
     hasProjectServices,
     services: state.services,
     isBookingPage: currentPageData?.id === 'booking',
-    showNextButton: currentPageData?.id !== 'booking' && currentPage < pages.length - 1
+    showNextButton: currentPageData?.id !== 'booking' && currentPage < pages.length - 1,
+    showThankYou,
+    meetingBooked: state.meetingBooked
   });
 
   return (
