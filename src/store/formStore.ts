@@ -200,7 +200,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
             sessionId: session.id 
           } 
         });
-      } else {
+    } else {
         throw new Error(`Session ${specificSessionId} not found`);
       }
     } catch (error) {
@@ -215,7 +215,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
       const newSessionId = generateSessionId();
       set({ 
         state: { 
-          ...initialState, 
+        ...initialState,
           sessionId: newSessionId 
         } 
       });
@@ -282,10 +282,10 @@ export const useFormStore = create<FormStore>((set, get) => ({
     
     try {
       // Mark as submitted and save to Supabase
-      const newState = {
+        const newState = {
         ...state,
-        formSubmitted: true,
-        isSubmitting: false,
+          formSubmitted: true,
+          isSubmitting: false,
         submissionError: null
       };
       

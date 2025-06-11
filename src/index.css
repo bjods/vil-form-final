@@ -5,10 +5,10 @@
 /* CSS Custom Properties for Widget Customization */
 :root {
   /* Layout */
-  --widget-width: 700px;
+  --widget-width: 600px;
   --widget-margin: 2rem auto;
-  --widget-height: 500px;
-  --widget-height-fallback: 500px;
+  --widget-height: 775px;
+  --widget-height-fallback: 775px;
   --widget-max-height: 90vh;
   
   /* Appearance */

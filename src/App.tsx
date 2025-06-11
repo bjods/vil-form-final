@@ -131,7 +131,7 @@ const FormFlow: React.FC<FormFlowProps> = ({
     return (
       <div className="flex items-center justify-center p-4">
         <SubmissionLoading />
-      </div>
+    </div>
     );
   }
   
@@ -140,7 +140,7 @@ const FormFlow: React.FC<FormFlowProps> = ({
     return (
       <div className="flex items-center justify-center p-4">
         <ThankYou onStartOver={handleBackToStart} />
-      </div>
+  </div>
     );
   }
   
@@ -151,7 +151,7 @@ const FormFlow: React.FC<FormFlowProps> = ({
     return (
       <div className="flex items-center justify-center p-4">
         <StartPage onStart={() => setIsStarted(true)} />
-      </div>
+    </div>
     );
   }
   
@@ -177,7 +177,7 @@ const FormFlow: React.FC<FormFlowProps> = ({
         >
           Continue
         </Button>
-      </div>
+  </div>
     );
   };
   

@@ -49,10 +49,10 @@ const UploadPage: React.FC = () => {
       }
       
       console.log('Photos successfully saved to database');
-      setIsSuccess(true);
-      setTimeout(() => {
-        navigate('/upload-complete');
-      }, 2000);
+        setIsSuccess(true);
+        setTimeout(() => {
+          navigate('/upload-complete');
+        }, 2000);
       
     } catch (error) {
       console.error('Failed to submit uploads:', error);
