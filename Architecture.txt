@@ -1,0 +1,296 @@
+VL Landscaping Form System Architecture
+
+  System Overview
+
+  A multi-stage lead capture and nurturing system designed to guide prospects through the sales
+  process with appropriate complexity at each stage.
+
+  Core Philosophy
+
+  Progressive Complexity: Start simple for initial capture, increase sophistication as leads progress
+  through the funnel.
+
+  - Initial Contact: Lightweight, fast, works everywhere
+  - Qualified Leads: Rich UX with advanced features
+  - Internal Tools: Full-featured forms for staff efficiency
+
+  System Components
+
+  1. Initial Form (Website Embed) - HTML/JavaScript
+
+  Purpose: Primary lead capture on website
+  Target: Cold traffic, first-time visitors
+  Priority: Speed, compatibility, tracking
+
+  Features:
+  - Contact information collection
+  - Service selection
+  - Property address (Google Maps autocomplete)
+  - Basic project details
+  - Photo upload option
+  - Referral source tracking
+
+  Technical Stack:
+  - Pure HTML forms with progressive enhancement
+  - Vanilla JavaScript (no frameworks)
+  - Direct Supabase REST API calls
+  - Google Maps Places API
+  - Bundle size: 30-50KB
+
+  Deployment: Single embed script
+  <div class="vl-form-embed"></div>
+  <script src="https://vil-form-final.vercel.app/embed-simple.js"></script>
+
+  2. Follow-Up Forms - React Application
+
+  Purpose: Detailed information gathering for qualified leads
+  Target: Engaged prospects who submitted initial form
+  Priority: Rich UX, comprehensive data collection
+
+  Features:
+  - Multi-step guided experience
+  - Dynamic form flows based on services
+  - Advanced validation and error handling
+  - File upload with preview
+  - Calendly integration for booking
+  - Progress saving and restoration
+
+  Technical Stack:
+  - React + TypeScript
+  - Zustand state management
+  - Tailwind CSS
+  - Supabase integration
+  - Current codebase (keep as-is)
+
+  Access: Email link with session ID
+  Example: https://vil-form-final.vercel.app/follow-up/abc123
+
+  3. Internal Forms - React Application
+
+  Purpose: Staff lead entry and management
+  Target: Company employees
+  Priority: Speed of entry, flexibility
+
+  Features:
+  - Single-page form with all fields
+  - Quick data entry workflows
+  - Lead import/export capabilities
+  - Advanced search and filtering
+
+  Technical Stack:
+  - React + TypeScript (current codebase)
+  - Same infrastructure as follow-up forms
+
+  Data Flow Architecture
+
+  Website Visitor
+         ↓
+  1. Initial HTML Form (embed)
+         ↓
+     Supabase Database
+     (autosave + final submission)
+         ↓
+  2. Email with Follow-up Link
+         ↓
+     React Follow-up Form
+         ↓
+     Complete Lead Profile
+         ↓
+  3. Internal Staff Tools
+     (React Internal Form)
+
+  Database Schema (Supabase)
+
+  form_sessions table
+
+  - id (uuid, primary key)
+  - created_at (timestamp)
+  - updated_at (timestamp)
+  - form_source (text) -- 'website', 'follow-up', 'internal'
+  - stage (text) -- 'initial', 'follow-up', 'complete'
+
+  -- Contact Information
+  - first_name (text)
+  - last_name (text)
+  - email (text)
+  - phone (text)
+
+  -- Property Information
+  - address (text)
+  - postal_code (text)
+  - inside_service_area (boolean)
+
+  -- Service Information
+  - services (jsonb) -- array of selected services
+  - service_details (jsonb) -- service-specific details
+  - budgets (jsonb) -- budget for each service
+  - start_deadlines (jsonb) -- timeline preferences
+
+  -- Project Information
+  - project_vision (text)
+  - success_criteria (text)
+  - site_challenges (text)
+  - previous_quotes (boolean)
+  - previous_provider (boolean)
+  - price_vs_long_term (text)
+
+  -- Media
+  - photo_urls (jsonb) -- array of uploaded images
+  - upload_link_requested (boolean)
+
+  -- Tracking
+  - referral_source (text)
+  - embed_source_url (text)
+  - embed_referrer (text)
+  - embed_url_params (text)
+
+  -- Status
+  - initial_form_completed (boolean)
+  - meeting_scheduled (boolean)
+  - final_submission_completed (boolean)
+
+  Integration Points
+
+  Email System
+
+  Trigger: Initial form completion
+  Tool: Supabase Edge Functions + Resend/SendGrid
+  Content: Personalized email with follow-up form link
+
+  CRM Integration
+
+  Data Export: Form submissions → CRM (HubSpot, Salesforce, etc.)
+  Webhook: Real-time lead notifications
+
+  Analytics & Tracking
+
+  Google Analytics: Form starts, completions, abandonment
+  WhatConverts: Lead attribution and conversion tracking
+  Facebook Pixel: Campaign optimization
+  Internal Analytics: Form performance metrics
+
+  User Experience Flows
+
+  Flow 1: Website Visitor → Lead
+
+  1. Visitor lands on website page with embedded form
+  2. Sees lightweight, fast-loading form (HTML)
+  3. Fills basic information (autosaved as they type)
+  4. Submits initial form
+  5. Receives immediate thank you + email notification
+  6. Email contains link to detailed follow-up form
+
+  Flow 2: Follow-up Engagement
+
+  1. Lead clicks email link with session ID
+  2. React app loads with saved data pre-populated
+  3. Multi-step form guides through detailed requirements
+  4. Rich UX: file uploads, calendar booking, etc.
+  5. Final submission creates complete lead profile
+  6. Automatic CRM sync and staff notification
+
+  Flow 3: Internal Lead Entry
+
+  1. Staff member accesses internal form
+  2. Single-page form for quick data entry
+  3. Can create leads from phone calls, referrals, etc.
+  4. Same database structure as website leads
+  5. Immediate availability for follow-up workflows
+
+  Technical Implementation Plan
+
+  Phase 1: HTML Embed Form (Days 1-3)
+
+  Day 1: Core HTML structure and styling
+  - Responsive form layout
+  - Basic field validation
+  - Service selection interface
+
+  Day 2: JavaScript functionality
+  - Google Maps autocomplete
+  - Form validation and UX
+  - Supabase integration for autosave
+
+  Day 3: Tracking and deployment
+  - WhatConverts event firing
+  - Analytics integration
+  - Production deployment and testing
+
+  Phase 2: Integration (Days 4-5)
+
+  Day 4: Email system setup
+  - Supabase Edge Function for email sending
+  - Template creation
+  - Follow-up link generation
+
+  Day 5: Testing and optimization
+  - Cross-browser testing
+  - Performance optimization
+  - Analytics verification
+
+  Phase 3: Monitoring (Ongoing)
+
+  - Form conversion tracking
+  - A/B testing different form layouts
+  - Performance monitoring
+  - Lead quality analysis
+
+  Success Metrics
+
+  Form Performance
+
+  - Load Time: <2 seconds on 3G
+  - Conversion Rate: >15% form starts to completions
+  - Abandonment Points: Track where users drop off
+  - Cross-browser Compatibility: 99%+ websites
+
+  Lead Quality
+
+  - Follow-up Engagement: % who complete detailed form
+  - Meeting Booking Rate: % who schedule consultations
+  - Lead-to-Customer: Conversion tracking
+  - Source Attribution: ROI by traffic source
+
+  Backup & Recovery
+
+  Data Backup
+
+  - Supabase automatic backups
+  - Daily export to secure storage
+  - Lead data redundancy
+
+  System Reliability
+
+  - CDN delivery for embed script
+  - Graceful degradation if services fail
+  - Offline form submission queuing
+
+  Security Considerations
+
+  Data Protection
+
+  - HTTPS for all communications
+  - Input sanitization and validation
+  - GDPR compliance for data collection
+  - Secure file upload handling
+
+  Access Control
+
+  - API key security
+  - Rate limiting on form submissions
+  - Spam protection (hCaptcha if needed)
+
+  Maintenance & Updates
+
+  Content Updates
+
+  - Form fields and options
+  - Email templates
+  - Thank you page messaging
+
+  Technical Updates
+
+  - Dependency updates
+  - Security patches
+  - Performance optimizations
+  - New feature rollouts
