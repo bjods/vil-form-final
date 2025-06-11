@@ -9,7 +9,13 @@ Add this code to any WordPress page, post, or widget where you want the form to 
 <script src="https://vil-form-final.vercel.app/embed.js"></script>
 ```
 
-That's it! The form will load automatically.
+That's it! The form will load automatically with all features including:
+- ✅ Google Maps address autocomplete
+- ✅ All form pages and functionality from the original
+- ✅ WhatConverts tracking compatibility
+- ✅ Perfect style isolation
+- ✅ Thank you page with next steps
+- ✅ Optimized lightweight bundle (755KB vs previous 2MB+)
 
 ## Advanced Options
 

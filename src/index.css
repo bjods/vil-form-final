@@ -5,47 +5,57 @@
 /* Scope all styles within .vl-form-embed to prevent conflicts */
 .vl-form-embed {
   /* Reset box model for consistency */
-  box-sizing: border-box;
-}
-
-.vl-form-embed * {
-  box-sizing: inherit;
-}
-
-/* Isolate form from parent styles */
-.vl-form-embed {
-  /* Reset common inherited properties */
+  box-sizing: border-box !important;
+  /* Isolate typography */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  font-size: 16px;
-  line-height: 1.5;
-  color: #333;
-  text-align: left;
+    sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+  color: #333333 !important;
+  text-align: left !important;
+  /* Reset common inherited properties that could cause conflicts */
+  background: transparent !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  vertical-align: baseline !important;
 }
 
-/* Additional style isolation for embed mode */
+.vl-form-embed *,
+.vl-form-embed *::before,
+.vl-form-embed *::after {
+  box-sizing: border-box !important;
+}
+
+/* Style isolation for embed wrapper */
 .vl-form-wrapper[data-vl-form="true"] {
-  /* Create a new stacking context */
-  position: relative;
-  z-index: 0;
+  /* Create isolated rendering context */
+  position: relative !important;
+  z-index: 0 !important;
   
-  /* Prevent style inheritance */
-  all: initial;
+  /* Typography isolation */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+  color: #333333 !important;
+  
+  /* Rendering optimizations */
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
 }
 
-/* Ensure Tailwind classes work within our wrapper */
-.vl-form-wrapper[data-vl-form="true"] *,
-.vl-form-embed * {
-  /* Allow Tailwind styles to work properly */
-  all: unset;
-  display: revert;
-  box-sizing: border-box;
+/* Prevent external styles from affecting our form elements */
+.vl-form-wrapper[data-vl-form="true"] input,
+.vl-form-wrapper[data-vl-form="true"] textarea,
+.vl-form-wrapper[data-vl-form="true"] select,
+.vl-form-wrapper[data-vl-form="true"] button {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
 }
 
 /* CSS Custom Properties for Widget Customization */
