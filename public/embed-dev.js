@@ -5,38 +5,9 @@
   }
   window.VLFormLoaded = true;
 
-  // Configuration
-  const PRODUCTION_URL = 'https://vil-form-final.vercel.app';
+  // Configuration for local development
+  const DEVELOPMENT_URL = 'http://localhost:5173';
   
-  // Function to load CSS
-  function loadCSS(href) {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = href;
-    link.onload = function() {
-      console.log('VL Form CSS loaded');
-    };
-    link.onerror = function() {
-      console.error('Failed to load VL Form CSS');
-    };
-    document.head.appendChild(link);
-  }
-
-  // Function to load JavaScript
-  function loadJS(src, callback) {
-    const script = document.createElement('script');
-    script.type = 'module';
-    script.src = src;
-    script.onload = function() {
-      console.log('VL Form JS loaded');
-      if (callback) callback();
-    };
-    script.onerror = function() {
-      console.error('Failed to load VL Form JS');
-    };
-    document.body.appendChild(script);
-  }
-
   // Function to initialize the form
   function initializeForm() {
     // Wait for the VLForm object to be available
@@ -83,12 +54,24 @@
     }, 10000);
   }
 
+  // For development, we'll directly load the Vite dev server modules
   // Load Calendly CSS (required for the form)
-  loadCSS('https://assets.calendly.com/assets/external/widget.css');
+  const calendlyLink = document.createElement('link');
+  calendlyLink.rel = 'stylesheet';
+  calendlyLink.href = 'https://assets.calendly.com/assets/external/widget.css';
+  document.head.appendChild(calendlyLink);
+
+  // Create a script to load from Vite dev server
+  const viteScript = document.createElement('script');
+  viteScript.type = 'module';
+  viteScript.innerHTML = `
+    import("${DEVELOPMENT_URL}/@vite/client");
+    import("${DEVELOPMENT_URL}/src/main.tsx").then(() => {
+      console.log('VL Form module loaded from Vite dev server');
+    });
+  `;
+  document.body.appendChild(viteScript);
   
-  // Load form CSS
-  loadCSS(PRODUCTION_URL + '/assets/index-CeWV8sYr.css');
-  
-  // Load form JavaScript
-  loadJS(PRODUCTION_URL + '/assets/index-KQrpwZMK.js', initializeForm);
-})(); 
+  // Initialize after a short delay
+  setTimeout(initializeForm, 1000);
+})();

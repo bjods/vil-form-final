@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Build Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .info {
+            background: #e3f2fd;
+            border: 1px solid #1976d2;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .info code {
+            background: #fff;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Production Build Test</h1>
+    
+    <div class="info">
+        <h3>To test the production build:</h3>
+        <ol>
+            <li>First build the project: <code>npm run build</code></li>
+            <li>Then start the preview server: <code>npm run preview</code></li>
+            <li>Open this file in your browser</li>
+            <li>The form should load below</li>
+        </ol>
+    </div>
+    
+    <!-- Form embed container -->
+    <div class="vl-form-embed"></div>
+    
+    <!-- Load from the preview server -->
+    <script src="http://localhost:4173/embed.js"></script>
+    
+    <script>
+        // Log events for debugging
+        window.addEventListener('vl-form-loaded', function(event) {
+            console.log('Form loaded:', event.detail);
+        });
+        
+        window.addEventListener('vl-form-submitted', function(event) {
+            console.log('Form submitted:', event.detail);
+            alert('Form submitted! Check console for details.');
+        });
+    </script>
+</body>
+</html>

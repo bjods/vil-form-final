@@ -281,6 +281,63 @@ export const useFormStore = create<FormStore>((set, get) => ({
     });
     
     try {
+      // Create form data for tracking
+      const formData = {
+        formId: 'vl-landscape-form',
+        sessionId: state.sessionId,
+        firstName: state.personalInfo.firstName,
+        lastName: state.personalInfo.lastName,
+        email: state.personalInfo.email,
+        phone: state.personalInfo.phone,
+        address: state.address,
+        postalCode: state.postalCode,
+        services: state.services.join(', '),
+        referralSource: state.personalInfo.referralSource,
+        timestamp: new Date().toISOString(),
+        // Include embed tracking data
+        sourceUrl: state.embedData?.sourceUrl || window.location.href,
+        referrer: state.embedData?.referrer || document.referrer,
+        urlParams: state.embedData?.urlParams || window.location.search
+      };
+
+      // Dispatch custom event for tracking tools
+      window.dispatchEvent(new CustomEvent('vl-form-submitted', {
+        detail: formData,
+        bubbles: true,
+        cancelable: false
+      }));
+
+      // Create and submit hidden form for WhatConverts
+      const hiddenForm = document.createElement('form');
+      hiddenForm.id = 'vl-tracking-form';
+      hiddenForm.style.display = 'none';
+      hiddenForm.method = 'POST';
+      hiddenForm.action = '#';
+
+      // Add form fields
+      Object.entries(formData).forEach(([key, value]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = String(value || '');
+        hiddenForm.appendChild(input);
+      });
+
+      // Append to body temporarily
+      document.body.appendChild(hiddenForm);
+
+      // Trigger form submit event for tracking tools
+      const submitEvent = new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      });
+      hiddenForm.dispatchEvent(submitEvent);
+
+      // Remove the form after a brief delay
+      setTimeout(() => {
+        document.body.removeChild(hiddenForm);
+      }, 100);
+
       // Mark as submitted and save to Supabase
         const newState = {
         ...state,
@@ -329,15 +386,6 @@ export const useFormStore = create<FormStore>((set, get) => ({
       
       return false;
     }
-  },
-  
-  clearErrors: () => {
-    set(state => ({
-      state: {
-        ...state.state,
-        errors: {}
-      }
-    }));
   },
 
   setSubStep: (subStep) => {

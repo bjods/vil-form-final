@@ -72,7 +72,10 @@ const SessionLoader: React.FC<SessionLoaderProps> = ({ children }) => {
 
 
 const AppRoutes: React.FC = () => {
-  return (
+  // Check if we're in embed mode
+  const isEmbedMode = !(document.getElementById('root'));
+  
+  const routerContent = (
     <Router>
       <Routes>
         {/* Initial Form - Homepage */}
@@ -145,6 +148,17 @@ const AppRoutes: React.FC = () => {
       </Routes>
     </Router>
   );
+  
+  // Wrap in scoped container if in embed mode
+  if (isEmbedMode) {
+    return (
+      <div className="vl-form-wrapper" data-vl-form="true">
+        {routerContent}
+      </div>
+    );
+  }
+  
+  return routerContent;
 };
 
 export default AppRoutes; 
