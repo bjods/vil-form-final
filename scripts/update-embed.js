@@ -40,6 +40,7 @@ const embedScriptContent = `(function() {
   // Function to load JavaScript
   function loadJS(src, callback) {
     const script = document.createElement('script');
+    script.type = 'module';
     script.src = src;
     script.onload = function() {
       console.log('VL Form JS loaded');
@@ -101,10 +102,10 @@ const embedScriptContent = `(function() {
   loadCSS('https://assets.calendly.com/assets/external/widget.css');
   
   // Load form CSS
-  ${manifest.embed.css ? `loadCSS(PRODUCTION_URL + '/${manifest.embed.css}');` : ''}
+  loadCSS(PRODUCTION_URL + '/${manifest.mainApp.css}');
   
-  // Load the standalone embed bundle
-  loadJS(PRODUCTION_URL + '/${manifest.embed.js || 'embed/embed.umd.cjs'}', initializeForm);
+  // Load form JavaScript
+  loadJS(PRODUCTION_URL + '/${manifest.mainApp.js}', initializeForm);
 })();`;
 
 // Write the updated embed.js to the dist directory

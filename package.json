@@ -5,10 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run build:embed && node scripts/update-embed.js",
+    "build": "vite build && node scripts/update-embed.js",
     "build:only": "vite build",
-    "build:embed": "vite build --config vite.embed.config.ts",
-    "build:full": "npm run build:only && npm run build:embed && node scripts/update-embed.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest"

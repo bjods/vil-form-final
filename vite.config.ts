@@ -7,6 +7,10 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  define: {
+    'process.env': {},
+    'process.env.NODE_ENV': JSON.stringify('production')
+  },
   build: {
     rollupOptions: {
       output: {

@@ -1104,8 +1104,8 @@ const InitialForm: React.FC<InitialFormProps> = ({ onComplete }) => {
           }
         `}
       </style>
-      <div className="w-full max-w-2xl mx-auto" style={{ height: '600px' }}>
-        <Card className="h-full flex flex-col">
+      <div className="w-full max-w-4xl mx-auto" style={{ minHeight: '700px' }}>
+        <Card className="h-full flex flex-col shadow-lg">
         <CardHeader className="flex-shrink-0">
           <CardTitle>{isSubmitted ? 'Complete!' : currentStepData?.title}</CardTitle>
           <CardDescription>
