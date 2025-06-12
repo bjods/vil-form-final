@@ -2,3 +2,24 @@
   from = "/*"
   to = "/index.html"
   status = 200
+  conditions = {Role = ["!embed"]}
+
+# Allow direct access to embed.js
+[[redirects]]
+  from = "/embed.js"
+  to = "/embed.js"
+  status = 200
+  force = true
+
+# Allow direct access to other static files
+[[redirects]]
+  from = "/*.js"
+  to = "/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*.css"
+  to = "/:splat"
+  status = 200
+  force = true
