@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/embed.js",
+      "destination": "/embed.js"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
