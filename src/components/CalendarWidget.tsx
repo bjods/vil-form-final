@@ -23,6 +23,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [datesWithAvailability, setDatesWithAvailability] = useState<Set<string>>(new Set());
 
   // Get the project URL for API calls
   const getApiUrl = (endpoint: string) => {
@@ -68,6 +69,42 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
       setAvailableSlots([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch availability for multiple dates to show visual cues
+  const fetchMonthAvailability = async (dates: Date[]) => {
+    const availableDates = new Set<string>();
+    
+    // Only check bookable dates
+    const bookableDates = dates.filter(isDateBookable);
+    
+    try {
+      // Check availability for each bookable date
+      const promises = bookableDates.map(async (date) => {
+        const dateString = date.toISOString().split('T')[0];
+        try {
+          const response = await fetch(`${getApiUrl('check-availability')}?date=${dateString}`, {
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.available_slots && data.available_slots.length > 0) {
+              availableDates.add(dateString);
+            }
+          }
+        } catch (err) {
+          console.error(`Error checking availability for ${dateString}:`, err);
+        }
+      });
+      
+      await Promise.all(promises);
+      setDatesWithAvailability(availableDates);
+    } catch (err) {
+      console.error('Error fetching month availability:', err);
     }
   };
 
@@ -182,6 +219,11 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
   const calendarDays = generateCalendarDays();
   const monthYear = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
+  // Fetch availability for the current month when it changes
+  useEffect(() => {
+    fetchMonthAvailability(calendarDays);
+  }, [currentDate]);
+
   // If meeting is already scheduled, show confirmation
   if (state.meetingScheduled || success) {
     return (
@@ -193,11 +235,11 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
           </div>
         </CardHeader>
         <CardContent className="text-center space-y-4">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-sm text-green-800">
+          <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
+            <p className="text-sm text-yellow-800">
               Your discovery call has been scheduled for:
             </p>
-            <p className="font-semibold text-green-900 mt-1">
+            <p className="font-semibold text-black mt-1">
               {state.meetingDate && new Date(state.meetingDate).toLocaleDateString('en-US', {
                 weekday: 'long',
                 year: 'numeric',
@@ -205,7 +247,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
                 day: 'numeric'
               })}
             </p>
-            <p className="font-semibold text-green-900">
+            <p className="font-semibold text-black">
               {state.meetingStartTime} - {state.meetingEndTime}
             </p>
           </div>
@@ -264,6 +306,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
             const isBookable = isDateBookable(day);
             const dateString = day.toISOString().split('T')[0];
             const isSelected = selectedDate === dateString;
+            const hasAvailability = datesWithAvailability.has(dateString);
             
             return (
               <button
@@ -271,15 +314,19 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
                 onClick={() => handleDateSelect(day)}
                 disabled={!isBookable || !isCurrentMonth}
                 className={`
-                  p-2 text-sm rounded-lg transition-colors
+                  p-2 text-sm rounded-lg transition-colors relative
                   ${!isCurrentMonth ? 'text-gray-300' : ''}
-                  ${isToday ? 'bg-blue-100 text-blue-900 font-semibold' : ''}
-                  ${isSelected ? 'bg-blue-600 text-white' : ''}
-                  ${isBookable && isCurrentMonth && !isSelected ? 'hover:bg-gray-100' : ''}
+                  ${isToday && !isSelected ? 'bg-yellow-600 text-white font-semibold' : ''}
+                  ${isSelected ? 'bg-black text-white font-semibold' : ''}
+                  ${hasAvailability && isCurrentMonth && !isSelected && !isToday ? 'bg-yellow-200 text-black hover:bg-yellow-300' : ''}
+                  ${isBookable && isCurrentMonth && !isSelected && !hasAvailability && !isToday ? 'hover:bg-gray-100' : ''}
                   ${!isBookable || !isCurrentMonth ? 'cursor-not-allowed' : 'cursor-pointer'}
                 `}
               >
                 {day.getDate()}
+                {hasAvailability && isCurrentMonth && (
+                  <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
+                )}
               </button>
             );
           })}
@@ -301,7 +348,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
             
             {loading ? (
               <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-500 mx-auto"></div>
                 <p className="text-sm text-gray-600 mt-2">Loading available times...</p>
               </div>
             ) : availableSlots.length > 0 ? (
@@ -312,7 +359,11 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
                     variant={selectedTime === slot.time ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleTimeSelect(slot.time)}
-                    className="text-xs"
+                    className={`text-xs ${
+                      selectedTime === slot.time 
+                        ? 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500' 
+                        : 'border-yellow-300 text-black hover:bg-yellow-50'
+                    }`}
                   >
                     {slot.time}
                   </Button>
@@ -337,15 +388,15 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
         {/* Book Meeting Button */}
         {selectedDate && selectedTime && (
           <div className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
+            <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
+              <p className="text-sm text-yellow-800">
                 <strong>Selected:</strong> {new Date(selectedDate).toLocaleDateString('en-US', {
                   weekday: 'long',
                   month: 'long',
                   day: 'numeric'
                 })} at {selectedTime}
               </p>
-              <p className="text-xs text-blue-600 mt-1">
+              <p className="text-xs text-yellow-700 mt-1">
                 Duration: 15 minutes
               </p>
             </div>
@@ -353,12 +404,12 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
             <Button
               onClick={handleBookMeeting}
               disabled={booking}
-              className="w-full"
+              className="w-full bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500"
               size="lg"
             >
               {booking ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
                   Booking Meeting...
                 </>
               ) : (
