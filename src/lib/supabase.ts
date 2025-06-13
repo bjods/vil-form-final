@@ -47,6 +47,12 @@ export interface FormSession {
   meeting_confirmation_sent?: boolean
   google_event_id?: string
   google_meet_link?: string
+  meeting_staff_member?: string
+  meeting_date?: string
+  meeting_start_time?: string
+  meeting_end_time?: string
+  zapier_webhook_sent?: boolean
+  zapier_webhook_sent_at?: string
   
   // Reminder Tracking
   follow_up_reminder_count?: number

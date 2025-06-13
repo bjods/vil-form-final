@@ -64,6 +64,11 @@ export interface FormState {
   siteChallenges?: string;
   projectSuccessCriteria?: string;
   notes?: string;
+  meetingScheduled?: boolean;
+  meetingStaffMember?: string;
+  meetingDate?: string;
+  meetingStartTime?: string;
+  meetingEndTime?: string;
   personalInfo: {
     firstName: string;
     lastName: string;

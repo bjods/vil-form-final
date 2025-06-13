@@ -21,6 +21,7 @@ interface FormStore {
   setSiteChallenges: (challenges: string) => void;
   setProjectSuccessCriteria: (criteria: string) => void;
   setNotes: (notes: string) => void;
+  setMeetingDetails: (staffMember: string, date: string, startTime: string, endTime: string) => void;
   setPersonalInfo: (info: Partial<FormState['personalInfo']>) => void;
   requestUploadLink: () => Promise<string | null>;
   submitForm: () => Promise<boolean>;
@@ -49,6 +50,11 @@ const initialState: FormState = {
   siteChallenges: '',
   projectSuccessCriteria: '',
   notes: '',
+  meetingScheduled: false,
+  meetingStaffMember: '',
+  meetingDate: '',
+  meetingStartTime: '',
+  meetingEndTime: '',
   personalInfo: {
     firstName: '',
     lastName: '',
@@ -87,10 +93,14 @@ const convertToSupabaseFormat = (state: FormState): Partial<FormSession> => ({
   previous_provider: state.previousProvider ? true : undefined,
   site_challenges: state.siteChallenges || undefined,
   notes: state.notes || undefined,
+  meeting_scheduled: state.meetingScheduled || false,
+  meeting_staff_member: state.meetingStaffMember || undefined,
+  meeting_date: state.meetingDate || undefined,
+  meeting_start_time: state.meetingStartTime || undefined,
+  meeting_end_time: state.meetingEndTime || undefined,
   start_deadlines: Object.keys(state.startDeadlines).length > 0 ? state.startDeadlines : undefined,
   upload_link_requested: state.personalInfo.textUploadLink,
   photo_urls: state.personalInfo.uploadedImages.length > 0 ? state.personalInfo.uploadedImages : undefined,
-  meeting_scheduled: state.meetingBooked,
   initial_form_completed: state.formSubmitted,
   // Embed tracking data
   embed_source_url: state.embedData?.sourceUrl,
@@ -119,6 +129,11 @@ const convertFromSupabaseFormat = (session: FormSession): FormState => ({
   siteChallenges: session.site_challenges || '',
   projectSuccessCriteria: session.success_criteria || '',
   notes: session.notes || '',
+  meetingScheduled: session.meeting_scheduled || false,
+  meetingStaffMember: session.meeting_staff_member || '',
+  meetingDate: session.meeting_date || '',
+  meetingStartTime: session.meeting_start_time || '',
+  meetingEndTime: session.meeting_end_time || '',
   personalInfo: {
     firstName: session.first_name || '',
     lastName: session.last_name || '',
@@ -573,6 +588,25 @@ export const useFormStore = create<FormStore>((set, get) => ({
       const newState = {
         ...state.state,
         notes: notes
+      };
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
+      return { state: newState };
+    });
+  },
+
+  setMeetingDetails: (staffMember, date, startTime, endTime) => {
+    set(state => {
+      const newState = {
+        ...state.state,
+        meetingScheduled: true,
+        meetingStaffMember: staffMember,
+        meetingDate: date,
+        meetingStartTime: startTime,
+        meetingEndTime: endTime
       };
       
       if (newState.sessionId) {

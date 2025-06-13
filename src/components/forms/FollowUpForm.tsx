@@ -12,7 +12,7 @@ import PreviousProvider from '../PreviousProvider';
 import PriceVsLongTerm from '../PriceVsLongTerm';
 import ProjectSuccessCriteria from '../ProjectSuccessCriteria';
 import PreviousQuotes from '../PreviousQuotes';
-import CalendlyBooking from '../CalendlyBooking';
+import CalendarWidget from '../CalendarWidget';
 
 interface FollowUpFormProps {
   sessionId?: string;
@@ -100,7 +100,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
       components: [
         {
           title: 'Book Your Meeting',
-          component: CalendlyBooking,
+          component: CalendarWidget,
           key: 'booking'
         }
       ]

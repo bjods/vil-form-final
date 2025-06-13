@@ -262,7 +262,7 @@
 /* Services */
 .vl-service-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  grid-template-columns: 1fr !important;
   gap: 0.75rem !important;
 }
 
@@ -335,13 +335,13 @@
 /* Grid Layouts */
 .vl-grid-2 {
   display: grid !important;
-  grid-template-columns: repeat(2, 1fr) !important;
+  grid-template-columns: 1fr !important;
   gap: 1rem !important;
 }
 
 .vl-grid-3 {
   display: grid !important;
-  grid-template-columns: repeat(3, 1fr) !important;
+  grid-template-columns: 1fr !important;
   gap: 0.75rem !important;
 }
 
@@ -1866,6 +1866,15 @@
     injectStyles();
     
     var containers = document.querySelectorAll('.vl-form-embed');
+    
+    // If no containers found, check for legacy ID
+    if (containers.length === 0) {
+      var legacyContainer = document.getElementById('vl-form-container');
+      if (legacyContainer) {
+        containers = [legacyContainer];
+      }
+    }
+    
     containers.forEach(function(container, index) {
       // Create unique ID if not present
       if (!container.id) {

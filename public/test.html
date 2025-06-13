@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIL Form Test</title>
+</head>
+<body>
+    <h1>VIL Form Test Page</h1>
+    <script>
+        console.log('Page loaded, about to load embed script');
+        window.addEventListener('error', function(e) {
+            console.error('Script error:', e.error, e.filename, e.lineno);
+        });
+    </script>
+    <script src="/scripts/embed.js"></script>
+    <div id="vl-form-container"></div>
+    <script>
+        setTimeout(function() {
+            console.log('Checking for form container:', document.getElementById('vl-form-container'));
+            console.log('Container innerHTML:', document.getElementById('vl-form-container').innerHTML);
+            console.log('VLFormLoaded:', window.VLFormLoaded);
+        }, 2000);
+    </script>
+</body>
+</html> 

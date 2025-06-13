@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from '../ui/checkbox';
 import { CheckCircle2, Circle, Save, User, DollarSign, FileText, Calendar, Phone, MapPin } from 'lucide-react';
 import { services } from '../../data/services';
-import CalendlyBooking from '../CalendlyBooking';
+import CalendarWidget from '../CalendarWidget';
 import { AutoSaveIndicator } from '../shared/AutoSaveIndicator';
 
 // Google Maps types
@@ -518,21 +518,12 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
         </CardContent>
       </Card>
 
-      {/* Calendly Booking */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            Schedule Discovery Call
-          </CardTitle>
-          <CardDescription>
-            Book a consultation call for this lead (optional)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CalendlyBooking />
-        </CardContent>
-      </Card>
+      {/* Calendar Booking */}
+      <CalendarWidget 
+        onMeetingBooked={(date, time) => {
+          console.log('Meeting booked:', date, time);
+        }}
+      />
 
       {/* Submit Button - Always at the bottom */}
       <Card>
