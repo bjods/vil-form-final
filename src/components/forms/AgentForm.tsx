@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useFormStore } from '../../store/formStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -7,10 +7,20 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Checkbox } from '../ui/checkbox';
-import { CheckCircle2, Circle, Save, User, DollarSign, FileText, Calendar, Phone } from 'lucide-react';
+import { CheckCircle2, Circle, Save, User, DollarSign, FileText, Calendar, Phone, MapPin } from 'lucide-react';
 import { services } from '../../data/services';
 import CalendlyBooking from '../CalendlyBooking';
 import { AutoSaveIndicator } from '../shared/AutoSaveIndicator';
+
+// Google Maps types
+declare global {
+  interface Window {
+    google: any;
+    initGoogleMaps: () => void;
+  }
+}
+
+const GOOGLE_MAPS_API_KEY = 'AIzaSyBaxGwc3uGt97gA_hKji4L3s-QuIuejzYI';
 
 const referralSources = [
   'Direct Mail',
@@ -35,13 +45,18 @@ interface AgentFormProps {
 }
 
 const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
-  const { state, setPersonalInfo, setServices, setBudget, setNotes, submitForm, initializeSession } = useFormStore();
+  const { state, setPersonalInfo, setServices, setBudget, setNotes, setAddress, submitForm, initializeSession } = useFormStore();
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [totalBudget, setTotalBudget] = useState<number>(0);
   const [notes, setNotesLocal] = useState('');
+  const [addressInput, setAddressInput] = useState(state.address || '');
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
+  const autocompleteRef = useRef<any>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const scriptLoadingRef = useRef(false);
 
   // Initialize session on mount
   useEffect(() => {
@@ -58,6 +73,107 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     };
     init();
   }, [sessionId]);
+
+  // Sync address input with store
+  useEffect(() => {
+    setAddressInput(state.address || '');
+  }, [state.address]);
+
+  // Load Google Maps script and setup autocomplete
+  const loadGoogleMapsScript = () => {
+    if (scriptLoadingRef.current) return;
+    
+    if (document.getElementById('google-maps-script') || window.google?.maps) {
+      setIsScriptLoaded(true);
+      setupAutocomplete();
+      return;
+    }
+
+    scriptLoadingRef.current = true;
+    
+    const callbackName = `initGoogleMaps_${Date.now()}`;
+    
+    (window as any)[callbackName] = () => {
+      setIsScriptLoaded(true);
+      setupAutocomplete();
+      delete (window as any)[callbackName];
+    };
+    
+    const script = document.createElement('script');
+    script.id = 'google-maps-script';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=${callbackName}`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => {
+      scriptLoadingRef.current = false;
+      console.error('Failed to load Google Maps script');
+    };
+    script.onload = () => {
+      scriptLoadingRef.current = false;
+    };
+    document.head.appendChild(script);
+  };
+  
+  useEffect(() => {
+    if (window.google?.maps?.places) {
+      setIsScriptLoaded(true);
+      setupAutocomplete();
+      return;
+    }
+    
+    loadGoogleMapsScript();
+    
+    return () => {
+      if (autocompleteRef.current) {
+        window.google?.maps?.event?.clearInstanceListeners(autocompleteRef.current);
+        autocompleteRef.current = null;
+      }
+      scriptLoadingRef.current = false;
+    };
+  }, []);
+  
+  const setupAutocomplete = () => {
+    if (!inputRef.current || !window.google?.maps?.places || autocompleteRef.current) return;
+    
+    try {
+      autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
+        componentRestrictions: { country: 'ca' },
+        fields: ['address_components', 'formatted_address']
+      });
+      
+      autocompleteRef.current.addListener('place_changed', handlePlaceChanged);
+    } catch (error) {
+      console.error('Error setting up autocomplete:', error);
+    }
+  };
+  
+  const handlePlaceChanged = () => {
+    const place = autocompleteRef.current.getPlace();
+    if (!place?.address_components) {
+      return;
+    }
+    
+    const fullAddress = place.formatted_address;
+    setAddressInput(fullAddress);
+    
+    let extractedPostalCode = '';
+    for (const component of place.address_components as any[]) {
+      if (component.types && component.types.includes('postal_code')) {
+        extractedPostalCode = component.short_name || '';
+        break;
+      }
+    }
+    
+    // Save to form store - assuming service area is valid for agent form
+    setAddress(fullAddress, extractedPostalCode, true);
+  };
+
+  const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAddressInput(value);
+    // For manual input, save without postal code
+    setAddress(value, '', true);
+  };
 
   // Auto-save functionality with debouncing
   useEffect(() => {
@@ -81,7 +197,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     }, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [state.personalInfo, state.services, totalBudget, notes, state.sessionId]);
+  }, [state.personalInfo, state.services, totalBudget, notes, state.address, state.sessionId]);
 
   // Update notes in store when local notes change
   useEffect(() => {
@@ -269,6 +385,27 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
                 <p className="text-amber-500 text-sm mt-1">Phone number seems incomplete</p>
               )}
             </div>
+          </div>
+
+          {/* Address Field */}
+          <div>
+            <Label htmlFor="address">Property Address</Label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MapPin className="w-4 h-4 text-gray-400" />
+              </div>
+              <Input
+                ref={inputRef}
+                id="address"
+                value={addressInput}
+                onChange={handleAddressInputChange}
+                placeholder="Start typing address..."
+                className="pl-10"
+              />
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              Start typing and select from dropdown for best results
+            </p>
           </div>
 
           <div>
