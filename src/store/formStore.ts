@@ -20,6 +20,7 @@ interface FormStore {
   setPriceVsLongTerm: (preference: 'price' | 'long-term') => void;
   setSiteChallenges: (challenges: string) => void;
   setProjectSuccessCriteria: (criteria: string) => void;
+  setNotes: (notes: string) => void;
   setPersonalInfo: (info: Partial<FormState['personalInfo']>) => void;
   requestUploadLink: () => Promise<string | null>;
   submitForm: () => Promise<boolean>;
@@ -47,6 +48,7 @@ const initialState: FormState = {
   priceVsLongTerm: undefined,
   siteChallenges: '',
   projectSuccessCriteria: '',
+  notes: '',
   personalInfo: {
     firstName: '',
     lastName: '',
@@ -84,6 +86,7 @@ const convertToSupabaseFormat = (state: FormState): Partial<FormSession> => ({
   price_vs_long_term: state.priceVsLongTerm || undefined,
   previous_provider: state.previousProvider ? true : undefined,
   site_challenges: state.siteChallenges || undefined,
+  notes: state.notes || undefined,
   start_deadlines: Object.keys(state.startDeadlines).length > 0 ? state.startDeadlines : undefined,
   upload_link_requested: state.personalInfo.textUploadLink,
   photo_urls: state.personalInfo.uploadedImages.length > 0 ? state.personalInfo.uploadedImages : undefined,
@@ -115,6 +118,7 @@ const convertFromSupabaseFormat = (session: FormSession): FormState => ({
   priceVsLongTerm: session.price_vs_long_term as 'price' | 'long-term' | undefined,
   siteChallenges: session.site_challenges || '',
   projectSuccessCriteria: session.success_criteria || '',
+  notes: session.notes || '',
   personalInfo: {
     firstName: session.first_name || '',
     lastName: session.last_name || '',
@@ -554,6 +558,21 @@ export const useFormStore = create<FormStore>((set, get) => ({
       const newState = {
         ...state.state,
         projectSuccessCriteria: criteria
+      };
+      
+      if (newState.sessionId) {
+        autoSave(newState.sessionId, newState);
+      }
+      
+      return { state: newState };
+    });
+  },
+
+  setNotes: (notes) => {
+    set(state => {
+      const newState = {
+        ...state.state,
+        notes: notes
       };
       
       if (newState.sessionId) {

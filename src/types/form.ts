@@ -63,6 +63,7 @@ export interface FormState {
   priceVsLongTerm?: 'price' | 'long-term';
   siteChallenges?: string;
   projectSuccessCriteria?: string;
+  notes?: string;
   personalInfo: {
     firstName: string;
     lastName: string;

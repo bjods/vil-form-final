@@ -69,6 +69,7 @@ export interface FormSession {
   price_vs_long_term?: string // 'price' or 'long-term'
   previous_provider?: boolean
   site_challenges?: string
+  notes?: string
   start_deadlines?: Record<string, any>
 }
 
