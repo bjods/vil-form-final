@@ -171,6 +171,22 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
           console.error('Error updating follow-up form completion:', error);
           throw error;
         }
+
+        // Cancel the follow-up email sequence
+        try {
+          const { data, error: cancelError } = await supabase.functions.invoke('cancel-follow-up-sequence', {
+            body: { session_id: state.sessionId }
+          });
+          
+          if (cancelError) {
+            console.error('Error cancelling follow-up sequence:', cancelError);
+          } else {
+            console.log('Follow-up email sequence cancelled successfully');
+          }
+        } catch (cancelError) {
+          console.error('Failed to cancel follow-up sequence:', cancelError);
+          // Don't fail the entire process if this fails
+        }
       }
       
       // Also call the regular submit form to update other fields
