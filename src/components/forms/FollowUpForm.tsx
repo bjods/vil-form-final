@@ -271,20 +271,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
 
   const currentPageData = pages[currentPage];
 
-  // Debug logging
-  console.log('FollowUpForm Debug:', {
-    currentPage,
-    totalPages: pages.length,
-    pageIds: pages.map(p => p.id),
-    currentPageId: currentPageData?.id,
-    hasMaintenanceServices,
-    hasProjectServices,
-    services: state.services,
-    isBookingPage: currentPageData?.id === 'booking',
-    showNextButton: currentPageData?.id !== 'booking' && currentPage < pages.length - 1,
-    showThankYou,
-    meetingBooked: state.meetingBooked
-  });
+
 
   return (
     <>

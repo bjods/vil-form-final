@@ -17,13 +17,15 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
   const { state, setMeetingDetails } = useFormStore();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [datesWithAvailability, setDatesWithAvailability] = useState<Set<string>>(new Set());
+  
+  // Cache availability data for the entire month
+  const [monthAvailability, setMonthAvailability] = useState<{ [date: string]: TimeSlot[] }>({});
+  const [monthLoading, setMonthLoading] = useState(false);
 
   // Get the project URL for API calls
   const getApiUrl = (endpoint: string) => {
@@ -45,77 +47,84 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
     return date >= tomorrow && date <= twoWeeksFromNow;
   };
 
-  // Fetch available slots for a specific date
-  const fetchAvailableSlots = async (date: string) => {
-    setLoading(true);
+  // Generate calendar days for the current month
+  const generateCalendarDays = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay()); // Start from Sunday
+    
+    const days = [];
+    const currentDateObj = new Date(startDate);
+    
+    // Generate 42 days (6 weeks)
+    for (let i = 0; i < 42; i++) {
+      days.push(new Date(currentDateObj));
+      currentDateObj.setDate(currentDateObj.getDate() + 1);
+    }
+    
+    return days;
+  };
+
+  // Fetch availability for the entire month using batch API
+  const fetchMonthAvailability = async () => {
+    setMonthLoading(true);
     setError(null);
     
     try {
-      const response = await fetch(`${getApiUrl('check-availability')}?date=${date}`, {
+      const calendarDays = generateCalendarDays();
+      
+      // Only check bookable dates
+      const bookableDates = calendarDays
+        .filter(isDateBookable)
+        .map(date => date.toISOString().split('T')[0]);
+      
+      if (bookableDates.length === 0) {
+        setMonthAvailability({});
+        return;
+      }
+      
+      console.log(`Fetching availability for ${bookableDates.length} dates in batch`);
+      
+      // Use batch API to fetch all dates at once
+      const response = await fetch(`${getApiUrl('check-availability')}?dates=${bookableDates.join(',')}`, {
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch availability');
+        throw new Error('Failed to fetch month availability');
       }
       
       const data = await response.json();
-      setAvailableSlots(data.available_slots || []);
-    } catch (err) {
-      console.error('Error fetching availability:', err);
-      setError('Failed to load available times');
-      setAvailableSlots([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch availability for multiple dates to show visual cues
-  const fetchMonthAvailability = async (dates: Date[]) => {
-    const availableDates = new Set<string>();
-    
-    // Only check bookable dates
-    const bookableDates = dates.filter(isDateBookable);
-    
-    try {
-      // Check availability for each bookable date
-      const promises = bookableDates.map(async (date) => {
-        const dateString = date.toISOString().split('T')[0];
-        try {
-          const response = await fetch(`${getApiUrl('check-availability')}?date=${dateString}`, {
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            },
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.available_slots && data.available_slots.length > 0) {
-              availableDates.add(dateString);
-            }
-          }
-        } catch (err) {
-          console.error(`Error checking availability for ${dateString}:`, err);
-        }
-      });
       
-      await Promise.all(promises);
-      setDatesWithAvailability(availableDates);
+      // Update state with all availability data
+      setMonthAvailability(data.dates || {});
+      
+      console.log(`Loaded availability for ${Object.keys(data.dates || {}).length} dates (${data.cached_count || 0} cached, ${data.fresh_count || 0} fresh)`);
+      
     } catch (err) {
       console.error('Error fetching month availability:', err);
+      setError('Failed to load calendar availability');
+      setMonthAvailability({});
+    } finally {
+      setMonthLoading(false);
     }
   };
 
-  // Handle date selection
+  // Handle date selection (now instant since data is cached)
   const handleDateSelect = (date: Date) => {
     if (!isDateBookable(date)) return;
     
     const dateString = date.toISOString().split('T')[0];
     setSelectedDate(dateString);
     setSelectedTime(null);
-    fetchAvailableSlots(dateString);
+    
+    // No need to fetch - data is already cached in monthAvailability
   };
 
   // Handle time selection
@@ -169,10 +178,14 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
         onMeetingBooked(selectedDate, selectedTime);
       }
 
-      // Reset selections
+      // Reset selections and refresh availability
       setSelectedDate(null);
       setSelectedTime(null);
-      setAvailableSlots([]);
+      
+      // Refresh the month availability to reflect the new booking
+      setTimeout(() => {
+        fetchMonthAvailability();
+      }, 1000);
 
     } catch (err) {
       console.error('Error booking meeting:', err);
@@ -180,28 +193,6 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
     } finally {
       setBooking(false);
     }
-  };
-
-  // Generate calendar days for the current month
-  const generateCalendarDays = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay()); // Start from Sunday
-    
-    const days = [];
-    const currentDateObj = new Date(startDate);
-    
-    // Generate 42 days (6 weeks)
-    for (let i = 0; i < 42; i++) {
-      days.push(new Date(currentDateObj));
-      currentDateObj.setDate(currentDateObj.getDate() + 1);
-    }
-    
-    return days;
   };
 
   // Navigate months
@@ -213,7 +204,8 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
     });
     setSelectedDate(null);
     setSelectedTime(null);
-    setAvailableSlots([]);
+    // Clear cached data when changing months
+    setMonthAvailability({});
   };
 
   const calendarDays = generateCalendarDays();
@@ -221,8 +213,11 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
 
   // Fetch availability for the current month when it changes
   useEffect(() => {
-    fetchMonthAvailability(calendarDays);
+    fetchMonthAvailability();
   }, [currentDate]);
+
+  // Get available slots for selected date from cached data
+  const availableSlots = selectedDate ? (monthAvailability[selectedDate] || []) : [];
 
   // If meeting is already scheduled, show confirmation
   if (state.meetingScheduled || success) {
@@ -269,6 +264,12 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
         <p className="text-sm text-gray-600">
           Select a date and time for your 15-minute discovery call
         </p>
+        {monthLoading && (
+          <div className="flex items-center gap-2 text-sm text-yellow-600">
+            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-500"></div>
+            Loading calendar availability...
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Month Navigation */}
@@ -277,6 +278,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
             variant="outline"
             size="sm"
             onClick={() => navigateMonth('prev')}
+            disabled={monthLoading}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -285,6 +287,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
             variant="outline"
             size="sm"
             onClick={() => navigateMonth('next')}
+            disabled={monthLoading}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -306,13 +309,13 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
             const isBookable = isDateBookable(day);
             const dateString = day.toISOString().split('T')[0];
             const isSelected = selectedDate === dateString;
-            const hasAvailability = datesWithAvailability.has(dateString);
+            const hasAvailability = monthAvailability[dateString]?.length > 0;
             
             return (
               <button
                 key={index}
                 onClick={() => handleDateSelect(day)}
-                disabled={!isBookable || !isCurrentMonth}
+                disabled={!isBookable || !isCurrentMonth || monthLoading}
                 className={`
                   p-2 text-sm rounded-lg transition-colors relative
                   ${!isCurrentMonth ? 'text-gray-300' : ''}
@@ -320,7 +323,8 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
                   ${isSelected ? 'bg-black text-white font-semibold' : ''}
                   ${hasAvailability && isCurrentMonth && !isSelected && !isToday ? 'bg-yellow-200 text-black hover:bg-yellow-300' : ''}
                   ${isBookable && isCurrentMonth && !isSelected && !hasAvailability && !isToday ? 'hover:bg-gray-100' : ''}
-                  ${!isBookable || !isCurrentMonth ? 'cursor-not-allowed' : 'cursor-pointer'}
+                  ${!isBookable || !isCurrentMonth || monthLoading ? 'cursor-not-allowed' : 'cursor-pointer'}
+                  ${monthLoading ? 'opacity-50' : ''}
                 `}
               >
                 {day.getDate()}
@@ -346,12 +350,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
               </h4>
             </div>
             
-            {loading ? (
-              <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-500 mx-auto"></div>
-                <p className="text-sm text-gray-600 mt-2">Loading available times...</p>
-              </div>
-            ) : availableSlots.length > 0 ? (
+            {availableSlots.length > 0 ? (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {availableSlots.map((slot) => (
                   <Button
@@ -424,6 +423,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
           <p>• Meetings must be booked at least 24 hours in advance</p>
           <p>• Available booking window: up to 2 weeks in advance</p>
           <p>• All meetings are 15 minutes long</p>
+          <p>• Calendar data is cached for faster loading</p>
         </div>
       </CardContent>
     </Card>
