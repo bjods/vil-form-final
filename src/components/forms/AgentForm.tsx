@@ -45,7 +45,7 @@ interface AgentFormProps {
 }
 
 const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
-  const { state, setPersonalInfo, setServices, setBudget, setNotes, setAddress, submitForm, initializeSession } = useFormStore();
+  const { state, setPersonalInfo, setServices, setBudget, setNotes, setAddress, submitAgentForm, initializeSession } = useFormStore();
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -252,7 +252,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   const handleSubmit = async () => {
     try {
       setIsSaving(true);
-      await submitForm();
+      await submitAgentForm();
       setIsSubmitted(true);
     } catch (error) {
       console.error('Failed to submit form:', error);

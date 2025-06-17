@@ -25,6 +25,7 @@ interface FormStore {
   setPersonalInfo: (info: Partial<FormState['personalInfo']>) => void;
   requestUploadLink: () => Promise<string | null>;
   submitForm: () => Promise<boolean>;
+  submitAgentForm: () => Promise<boolean>;
   setMeetingBooked: (booked: boolean) => void;
   setEmbedData: (embedData: FormState['embedData']) => void;
   resetForm: () => void;
@@ -398,6 +399,97 @@ export const useFormStore = create<FormStore>((set, get) => ({
           formSubmitted: true,
           isSubmitting: false,
           submissionError: 'Failed to submit form'
+        };
+        
+        return { state: newState };
+      });
+      
+      return false;
+    }
+  },
+
+  submitAgentForm: async () => {
+    const { state } = get();
+    
+    // Prevent multiple submissions
+    if (state.formSubmitted || state.isSubmitting) {
+      console.log('Agent form already submitted or submitting, skipping...');
+      return true;
+    }
+    
+    console.log('Starting agent form submission...');
+    
+    // Set submitting state
+    set(currentState => {
+      const newState = {
+        ...currentState.state,
+        isSubmitting: true,
+        submissionError: null
+      };
+      return { state: newState };
+    });
+    
+    try {
+      // Send to webhook via Edge Function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-agent-form`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          session_id: state.sessionId,
+          form_type: 'agent'
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit agent form');
+      }
+
+      // Mark as submitted and save to Supabase
+      const newState = {
+        ...state,
+        formSubmitted: true,
+        isSubmitting: false,
+        submissionError: null
+      };
+      
+      if (newState.sessionId) {
+        // Update the database to mark form as completed
+        const supabaseData = convertToSupabaseFormat(newState);
+        const { error } = await supabase
+          .from('form_sessions')
+          .update({
+            ...supabaseData,
+            initial_form_completed: true,
+            form_type: 'agent',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', newState.sessionId);
+          
+        if (error) {
+          console.error('Error updating agent form completion status:', error);
+          throw error;
+        }
+        
+        console.log('Agent form marked as completed in database');
+      }
+      
+      set(currentState => ({ state: newState }));
+      
+      return true;
+    } catch (error) {
+      console.error('Agent form submission error:', error);
+      
+      // Mark submission error but don't prevent navigation
+      set(currentState => {
+        const newState = {
+          ...currentState.state,
+          formSubmitted: true,
+          isSubmitting: false,
+          submissionError: 'Failed to submit agent form'
         };
         
         return { state: newState };
