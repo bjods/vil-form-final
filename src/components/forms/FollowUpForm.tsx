@@ -13,13 +13,14 @@ import PriceVsLongTerm from '../PriceVsLongTerm';
 import ProjectSuccessCriteria from '../ProjectSuccessCriteria';
 import PreviousQuotes from '../PreviousQuotes';
 import CalendarWidget from '../CalendarWidget';
+import FileUpload from '../FileUpload';
 
 interface FollowUpFormProps {
   sessionId?: string;
 }
 
 const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
-  const { state, submitForm, setMeetingBooked } = useFormStore();
+  const { state, submitForm, setMeetingBooked, setPersonalInfo } = useFormStore();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(0);
   const [validationStates, setValidationStates] = useState<Record<string, boolean>>({});
@@ -46,9 +47,95 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
     ['landscape-design-build', 'landscape-enhancement'].includes(serviceId)
   );
 
+  // Photo Upload Component
+  const PhotoUploadComponent: React.FC<{ onValidationChange: (isValid: boolean) => void }> = ({ onValidationChange }) => {
+    const [uploadedImages, setUploadedImages] = useState<string[]>(state.personalInfo.uploadedImages);
+
+    const handleUpload = async (urls: string[]) => {
+      const newImages = [...uploadedImages, ...urls];
+      setUploadedImages(newImages);
+      
+      // Update the form store with new images
+      setPersonalInfo({ uploadedImages: newImages });
+      
+      // Save to database immediately
+      if (state.sessionId) {
+        try {
+          const { error } = await supabase
+            .from('form_sessions')
+            .update({
+              photo_urls: newImages,
+              photos_uploaded: newImages.length > 0,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', state.sessionId);
+          
+          if (error) {
+            console.error('Error updating photos in database:', error);
+          } else {
+            console.log('Photos successfully saved to database');
+          }
+        } catch (error) {
+          console.error('Failed to save photos to database:', error);
+        }
+      }
+      
+      // Always consider this page valid (photos are optional)
+      onValidationChange(true);
+    };
+
+    // Set validation to true on mount since photos are optional
+    useEffect(() => {
+      onValidationChange(true);
+    }, [onValidationChange]);
+
+    return (
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <h3 className="text-lg font-medium text-gray-900">
+            If you haven't uploaded photos, please do so if possible
+          </h3>
+          <p className="text-sm text-gray-600">
+            Photos will help us make an accurate quote and get you your services as fast as possible. This step is optional, but highly recommended.
+          </p>
+          <FileUpload
+            onUpload={handleUpload}
+            maxFiles={10}
+            maxSize={10 * 1024 * 1024}
+          />
+          <p className="text-sm text-gray-500">
+            You can upload up to 10 images, each up to 10MB in size
+          </p>
+        </div>
+
+        {uploadedImages.length > 0 && (
+          <p className="text-sm text-green-600">
+            {uploadedImages.length} {uploadedImages.length === 1 ? 'image' : 'images'} uploaded
+          </p>
+        )}
+      </div>
+    );
+  };
+
   // Memoize pages to prevent infinite re-renders
   const pages = useMemo(() => {
     const pageList = [];
+
+    // Add photo upload page if user doesn't have photos
+    if (!hasPhotos) {
+      pageList.push({
+        id: 'photo-upload',
+        title: 'Property Photos',
+        description: 'Upload photos to help us provide an accurate quote',
+        components: [
+          {
+            title: 'Upload Photos',
+            component: PhotoUploadComponent,
+            key: 'photoUpload'
+          }
+        ]
+      });
+    }
 
     // Add maintenance details page if maintenance services are selected
     if (hasMaintenanceServices) {
@@ -109,7 +196,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
     console.log('Pages generated:', pageList.map(p => p.id));
 
     return pageList;
-  }, [hasMaintenanceServices, hasProjectServices]);
+  }, [hasMaintenanceServices, hasProjectServices, hasPhotos]);
 
   // If no relevant services are selected, redirect to home
   useEffect(() => {

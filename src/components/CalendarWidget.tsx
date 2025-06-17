@@ -418,13 +418,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
           </div>
         )}
 
-        {/* Instructions */}
-        <div className="text-xs text-gray-500 space-y-1">
-          <p>• Meetings must be booked at least 24 hours in advance</p>
-          <p>• Available booking window: up to 2 weeks in advance</p>
-          <p>• All meetings are 15 minutes long</p>
-          <p>• Calendar data is cached for faster loading</p>
-        </div>
+
       </CardContent>
     </Card>
   );
