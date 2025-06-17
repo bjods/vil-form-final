@@ -235,7 +235,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
               Your discovery call has been scheduled for:
             </p>
             <p className="font-semibold text-black mt-1">
-              {state.meetingDate && new Date(state.meetingDate).toLocaleDateString('en-US', {
+              {state.meetingDate && new Date(state.meetingDate + 'T12:00:00').toLocaleDateString('en-US', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
@@ -342,7 +342,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
               <h4 className="font-medium">
-                Available times for {new Date(selectedDate).toLocaleDateString('en-US', {
+                Available times for {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
                   weekday: 'long',
                   month: 'long',
                   day: 'numeric'
@@ -389,7 +389,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
           <div className="space-y-4">
             <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
               <p className="text-sm text-yellow-800">
-                <strong>Selected:</strong> {new Date(selectedDate).toLocaleDateString('en-US', {
+                <strong>Selected:</strong> {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
                   weekday: 'long',
                   month: 'long',
                   day: 'numeric'
