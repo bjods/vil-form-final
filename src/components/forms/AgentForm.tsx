@@ -309,7 +309,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
             </h1>
             
             <p className="text-lg text-gray-600 mb-8">
-              The lead has been saved to the system and is ready for follow-up.
+              Lead saved successfully.
             </p>
 
             <div className="space-y-4">

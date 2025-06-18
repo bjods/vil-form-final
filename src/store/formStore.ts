@@ -430,7 +430,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
     });
     
     try {
-      // Send to webhook via Edge Function
+      // Send current form state to webhook via Edge Function
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-agent-form`, {
         method: 'POST',
         headers: {
@@ -439,7 +439,8 @@ export const useFormStore = create<FormStore>((set, get) => ({
         },
         body: JSON.stringify({
           session_id: state.sessionId,
-          form_type: 'agent'
+          form_type: 'agent',
+          form_state: state // Send the entire current form state
         }),
       });
 
@@ -448,34 +449,16 @@ export const useFormStore = create<FormStore>((set, get) => ({
         throw new Error(errorData.error || 'Failed to submit agent form');
       }
 
-      // Mark as submitted and save to Supabase
+      const responseData = await response.json();
+      console.log('Agent form submission response:', responseData);
+
+      // Mark as submitted
       const newState = {
         ...state,
         formSubmitted: true,
         isSubmitting: false,
         submissionError: null
       };
-      
-      if (newState.sessionId) {
-        // Update the database to mark form as completed
-        const supabaseData = convertToSupabaseFormat(newState);
-        const { error } = await supabase
-          .from('form_sessions')
-          .update({
-            ...supabaseData,
-            initial_form_completed: true,
-            form_type: 'agent',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', newState.sessionId);
-          
-        if (error) {
-          console.error('Error updating agent form completion status:', error);
-          throw error;
-        }
-        
-        console.log('Agent form marked as completed in database');
-      }
       
       set(currentState => ({ state: newState }));
       
