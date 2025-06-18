@@ -10,12 +10,12 @@ const options = [
   {
     id: 'price',
     title: 'Most Affordable Option',
-    description: 'I\'m looking for the best price and value for my budget'
+    description: 'Best price and value for my budget'
   },
   {
     id: 'long-term',
     title: 'Quality Long-term Service',
-    description: 'I want a reliable, high-quality service partner for the long run'
+    description: 'Reliable, high-quality service partner'
   }
 ];
 

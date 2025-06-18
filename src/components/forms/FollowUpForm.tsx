@@ -27,7 +27,6 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
   const [showThankYou, setShowThankYou] = useState(false);
 
   // Reset meeting booked status when follow-up form loads
-  // This ensures we start fresh for the follow-up flow
   useEffect(() => {
     if (state.meetingBooked) {
       console.log('Resetting meetingBooked to false for follow-up form');
@@ -91,23 +90,14 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
 
     return (
       <div className="space-y-6">
-        <div className="space-y-3">
-          <h3 className="text-lg font-medium text-gray-900">
-            If you haven't uploaded photos, please do so if possible
-          </h3>
-          <p className="text-sm text-gray-600">
-            Photos will help us make an accurate quote and get you your services as fast as possible. This step is optional, but highly recommended.
-          </p>
-          <FileUpload
-            onUpload={handleUpload}
-            maxFiles={10}
-            maxSize={10 * 1024 * 1024}
-          />
-          <p className="text-sm text-gray-500">
-            You can upload up to 10 images, each up to 10MB in size
-          </p>
-        </div>
-
+        <p className="text-sm text-gray-600">
+          Photos help us provide accurate quotes (optional)
+        </p>
+        <FileUpload
+          onUpload={handleUpload}
+          maxFiles={10}
+          maxSize={10 * 1024 * 1024}
+        />
         {uploadedImages.length > 0 && (
           <p className="text-sm text-green-600">
             {uploadedImages.length} {uploadedImages.length === 1 ? 'image' : 'images'} uploaded
@@ -126,7 +116,6 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
       pageList.push({
         id: 'photo-upload',
         title: 'Property Photos',
-        description: 'Upload photos to help us provide an accurate quote',
         components: [
           {
             title: 'Upload Photos',
@@ -142,15 +131,14 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
       pageList.push({
         id: 'maintenance-details',
         title: 'Maintenance Details',
-        description: 'Tell us about your maintenance service preferences',
         components: [
           {
-            title: 'Previous Provider Experience',
+            title: 'Previous Provider',
             component: PreviousProvider,
             key: 'previousProvider'
           },
           {
-            title: 'Service Preferences',
+            title: 'Service Preference',
             component: PriceVsLongTerm,
             key: 'priceVsLongTerm'
           }
@@ -163,7 +151,6 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
       pageList.push({
         id: 'project-details',
         title: 'Project Details',
-        description: 'Help us understand your project goals and requirements',
         components: [
           {
             title: 'Success Criteria',
@@ -179,14 +166,13 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
       });
     }
 
-    // Always add booking page - FORCE IT TO BE INCLUDED
+    // Always add booking page
     pageList.push({
       id: 'booking',
-      title: 'Schedule Your Consultation',
-      description: 'Choose a time that works best for you',
+      title: 'Schedule Consultation',
       components: [
         {
-          title: 'Book Your Meeting',
+          title: '',
           component: CalendarWidget,
           key: 'booking'
         }
@@ -310,7 +296,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
               </h1>
               
               <p className="text-lg text-gray-600 mb-6">
-                Your consultation has been scheduled successfully. We'll be in touch soon to discuss your {hasProjectServices && hasMaintenanceServices ? 'project and maintenance needs' : hasProjectServices ? 'project' : 'maintenance needs'}.
+                Your consultation has been scheduled. We'll be in touch soon.
               </p>
 
               {!hasPhotos && (
@@ -319,7 +305,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
                     Upload Property Photos
                   </h3>
                   <p className="text-orange-700 mb-4">
-                    Help us prepare for your consultation by uploading photos of your property.
+                    Help us prepare for your consultation.
                   </p>
                   <Button
                     onClick={() => navigate(`/upload/${state.sessionId}`)}
@@ -357,8 +343,6 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
   }
 
   const currentPageData = pages[currentPage];
-
-
 
   return (
     <>
@@ -402,7 +386,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
             <CardHeader className="flex-shrink-0">
               <CardTitle>{currentPageData.title}</CardTitle>
               <CardDescription>
-                Step {currentPage + 1} of {pages.length} - {currentPageData.description}
+                Step {currentPage + 1} of {pages.length}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col min-h-0 p-6">
@@ -412,7 +396,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
                     const Component = comp.component;
                     return (
                       <div key={comp.key}>
-                        {comp.title && comp.title !== 'Book Your Meeting' && (
+                        {comp.title && (
                           <h3 className="text-lg font-semibold mb-4">{comp.title}</h3>
                         )}
                         <Component
@@ -450,7 +434,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
                     <Button
                       onClick={handleNext}
                       disabled={!canProceed()}
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white"
                     >
                       Next
                       <ArrowRight className="w-4 h-4" />

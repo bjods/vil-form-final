@@ -10,12 +10,12 @@ const options = [
   {
     id: 'yes',
     title: 'Yes, I have other quotes',
-    description: 'I\'ve received quotes from other companies'
+    description: 'I have quotes from other companies'
   },
   {
     id: 'no',
     title: 'No, this is my first quote',
-    description: 'I haven\'t received any other quotes yet'
+    description: 'This is my first quote request'
   }
 ];
 

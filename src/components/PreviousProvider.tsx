@@ -22,14 +22,11 @@ const PreviousProvider: React.FC<PreviousProviderProps> = ({ onValidationChange 
       </Label>
       <Textarea
         id="previous-provider"
-        placeholder="Who provided your maintenance services before? What did you like or dislike about their service?"
+        placeholder="Who provided your services before? What did you like or dislike?"
         value={state.previousProvider || ''}
         onChange={(e) => setPreviousProvider(e.target.value)}
         className="min-h-[100px]"
       />
-      <p className="text-sm text-gray-500">
-        This helps us understand your expectations and how we can better serve you.
-      </p>
     </div>
   );
 };
