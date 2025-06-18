@@ -83,8 +83,7 @@
   ];
 
   // Referral sources
-  var referralSources = ['Direct Mail', 'Facebook', 'Organic Search', 'Google Ads', 'Home Show', 
-    'Instagram', 'TikTok', 'Truck Signage', 'LinkedIn', 'Mercedes Benz Catalog', 'Jobsite Sign', 'Other'];
+  var referralSources = ['Cold Calling', 'Direct Mailer', 'Door Knocking', 'Email Cold Outreach', 'Facebook', 'Field Crew Referral', 'Google Ads', 'Google Organic', 'Home Show', 'Inbound Lead', 'Instagram', 'Jobsite Sign', 'LinkedIn', 'Mercedes Benz Catalog', 'Referral', 'Tiktok', 'Truck Signage', 'Unknown'];
 
   // Inject all styles
   function injectStyles() {

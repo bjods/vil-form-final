@@ -22,18 +22,24 @@ declare global {
 }
 
 const referralSources = [
-  'Direct Mail',
+  'Cold Calling',
+  'Direct Mailer',
+  'Door Knocking',
+  'Email Cold Outreach',
   'Facebook',
-  'Organic Search',
+  'Field Crew Referral',
   'Google Ads',
+  'Google Organic',
   'Home Show',
+  'Inbound Lead',
   'Instagram',
-  'TikTok',
-  'Truck Signage',
-  'Linkedin',
-  'Mercedes Benz Catalog',
   'Jobsite Sign',
-  'Other'
+  'LinkedIn',
+  'Mercedes Benz Catalog',
+  'Referral',
+  'Tiktok',
+  'Truck Signage',
+  'Unknown'
 ];
 
 // Simple image upload function - you can enhance this with actual Supabase storage

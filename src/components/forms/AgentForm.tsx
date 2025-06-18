@@ -23,21 +23,24 @@ declare global {
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBaxGwc3uGt97gA_hKji4L3s-QuIuejzYI';
 
 const referralSources = [
-  'Direct Mail',
-  'Facebook', 
-  'Organic Search',
+  'Cold Calling',
+  'Direct Mailer',
+  'Door Knocking',
+  'Email Cold Outreach',
+  'Facebook',
+  'Field Crew Referral',
   'Google Ads',
+  'Google Organic',
   'Home Show',
+  'Inbound Lead',
   'Instagram',
-  'TikTok',
-  'Truck Signage',
-  'Linkedin',
-  'Mercedes Benz Catalog',
   'Jobsite Sign',
-  'Door to Door',
-  'Phone Call',
+  'LinkedIn',
+  'Mercedes Benz Catalog',
   'Referral',
-  'Other'
+  'Tiktok',
+  'Truck Signage',
+  'Unknown'
 ];
 
 interface AgentFormProps {
