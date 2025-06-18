@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from '../ui/checkbox';
 import { CheckCircle2, Circle, Save, User, DollarSign, FileText, Calendar, Phone, MapPin } from 'lucide-react';
 import { services } from '../../data/services';
-import CalendarWidget from '../CalendarWidget';
+import AgentCalendarWidget from '../AgentCalendarWidget';
 import { AutoSaveIndicator } from '../shared/AutoSaveIndicator';
 
 // Google Maps types
@@ -45,7 +45,7 @@ interface AgentFormProps {
 }
 
 const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
-  const { state, setPersonalInfo, setServices, setBudget, setNotes, setAddress, submitAgentForm, initializeSession } = useFormStore();
+  const { state, setPersonalInfo, setServices, setBudget, setNotes, setAddress, setMeetingDetails, submitAgentForm, initializeSession } = useFormStore();
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -53,6 +53,8 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   const [totalBudget, setTotalBudget] = useState<number>(0);
   const [notes, setNotesLocal] = useState('');
   const [addressInput, setAddressInput] = useState(state.address || '');
+  const [selectedMeetingDate, setSelectedMeetingDate] = useState<string | null>(null);
+  const [selectedMeetingTime, setSelectedMeetingTime] = useState<string | null>(null);
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const autocompleteRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -181,7 +183,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
 
     const timeoutId = setTimeout(async () => {
       try {
-        setIsSaving(true);
+    setIsSaving(true);
         setSaveError(null);
         
         // Update the form store which will trigger auto-save
@@ -249,9 +251,31 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     });
   };
 
+  const handleMeetingSelection = (date: string | null, time: string | null) => {
+    setSelectedMeetingDate(date);
+    setSelectedMeetingTime(time);
+  };
+
   const handleSubmit = async () => {
     try {
       setIsSaving(true);
+      
+      // Save meeting details if selected
+      if (selectedMeetingDate && selectedMeetingTime) {
+        // Calculate end time (15 minutes after start time)
+        const [hours, minutes] = selectedMeetingTime.split(':').map(Number);
+        const endDate = new Date();
+        endDate.setHours(hours, minutes + 15, 0, 0);
+        const endTime = endDate.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: false 
+        });
+        
+        // Save meeting details to form store (will be included in submission)
+        setMeetingDetails('Agent', selectedMeetingDate, selectedMeetingTime, endTime);
+      }
+      
       await submitAgentForm();
       setIsSubmitted(true);
     } catch (error) {
@@ -468,7 +492,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
               })}
             </div>
           </div>
-
+          
           <div>
             <Label htmlFor="budget">Total Budget (optional)</Label>
             <div className="relative max-w-md">
@@ -519,10 +543,10 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
       </Card>
 
       {/* Calendar Booking */}
-      <CalendarWidget 
-        onMeetingBooked={(date, time) => {
-          console.log('Meeting booked:', date, time);
-        }}
+      <AgentCalendarWidget 
+        onSelectionChange={handleMeetingSelection}
+        selectedDate={selectedMeetingDate}
+        selectedTime={selectedMeetingTime}
       />
 
       {/* Submit Button - Always at the bottom */}
