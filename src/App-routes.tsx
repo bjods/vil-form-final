@@ -74,10 +74,22 @@ const SessionLoader: React.FC<SessionLoaderProps> = ({ children }) => {
               Try Again
             </button>
             <button 
-              onClick={() => window.location.href = '/'}
+              onClick={() => {
+                // Try to close the tab first
+                try {
+                  window.close();
+                  // If window.close() doesn't work (e.g., not opened by script), redirect after a short delay
+                  setTimeout(() => {
+                    window.location.href = 'https://villandscaping.ca';
+                  }, 100);
+                } catch (error) {
+                  // Fallback to redirect
+                  window.location.href = 'https://villandscaping.ca';
+                }
+              }}
               className="w-full bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-md"
             >
-              Start New Form
+              Exit
             </button>
           </div>
           <p className="text-xs text-gray-400 mt-4">
