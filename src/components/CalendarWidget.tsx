@@ -163,13 +163,24 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
 
       const data = await response.json();
       
-      // Update local state
-      setMeetingDetails(
-        data.meeting.staff_member,
-        data.meeting.date,
-        data.meeting.start_time,
-        data.meeting.end_time
-      );
+      // The response structure is flat, not nested under 'meeting'
+      // Update local state with the meeting details from the response
+      if (data.success && data.data_sent?.meeting_details) {
+        setMeetingDetails(
+          data.data_sent.meeting_details.provider || 'Staff Member',
+          data.data_sent.meeting_details.date || selectedDate,
+          data.data_sent.meeting_details.start_time || selectedTime,
+          data.data_sent.meeting_details.end_time || ''
+        );
+      } else {
+        // Fallback if the response structure is different
+        setMeetingDetails(
+          'Staff Member', // Default staff member
+          selectedDate,
+          selectedTime,
+          '' // End time will be calculated
+        );
+      }
 
       setSuccess(true);
       

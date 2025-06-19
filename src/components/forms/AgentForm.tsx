@@ -58,6 +58,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   const [addressInput, setAddressInput] = useState(state.address || '');
   const [selectedMeetingDate, setSelectedMeetingDate] = useState<string | null>(null);
   const [selectedMeetingTime, setSelectedMeetingTime] = useState<string | null>(null);
+  const [selectedStaffMember, setSelectedStaffMember] = useState<string | null>(null);
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const autocompleteRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -254,9 +255,10 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     });
   };
 
-  const handleMeetingSelection = (date: string | null, time: string | null) => {
+  const handleMeetingSelection = (date: string | null, time: string | null, staffMember?: string | null) => {
     setSelectedMeetingDate(date);
     setSelectedMeetingTime(time);
+    setSelectedStaffMember(staffMember || null);
   };
 
   const handleSubmit = async () => {
@@ -275,8 +277,13 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
           hour12: false 
         });
         
+        // Use the actual staff member name, with fallback to 'Staff Member'
+        const staffMemberName = selectedStaffMember === 'dom' ? 'Dom' : 
+                               selectedStaffMember === 'charlie' ? 'Charlie' : 
+                               selectedStaffMember || 'Staff Member';
+        
         // Save meeting details to form store (will be included in submission)
-        setMeetingDetails('Agent', selectedMeetingDate, selectedMeetingTime, endTime);
+        setMeetingDetails(staffMemberName, selectedMeetingDate, selectedMeetingTime, endTime);
       }
       
       await submitAgentForm();

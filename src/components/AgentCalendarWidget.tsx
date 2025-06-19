@@ -5,10 +5,11 @@ import { ChevronLeft, ChevronRight, Calendar, Clock, AlertCircle } from 'lucide-
 
 interface TimeSlot {
   time: string;
+  staff_member?: string;
 }
 
 interface AgentCalendarWidgetProps {
-  onSelectionChange?: (date: string | null, time: string | null) => void;
+  onSelectionChange?: (date: string | null, time: string | null, staffMember?: string | null) => void;
   selectedDate?: string | null;
   selectedTime?: string | null;
 }
@@ -126,7 +127,7 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = ({
     
     // Notify parent component of selection change
     if (onSelectionChange) {
-      onSelectionChange(dateString, null);
+      onSelectionChange(dateString, null, null);
     }
   };
 
@@ -134,9 +135,13 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = ({
   const handleTimeSelect = (time: string) => {
     setSelectedTime(time);
     
+    // Find the staff member for this time slot
+    const timeSlot = availableSlots.find(slot => slot.time === time);
+    const staffMember = timeSlot?.staff_member || null;
+    
     // Notify parent component of selection change
     if (onSelectionChange) {
-      onSelectionChange(selectedDate, time);
+      onSelectionChange(selectedDate, time, staffMember);
     }
   };
 
@@ -154,7 +159,7 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = ({
     
     // Notify parent of cleared selection
     if (onSelectionChange) {
-      onSelectionChange(null, null);
+      onSelectionChange(null, null, null);
     }
   };
 
