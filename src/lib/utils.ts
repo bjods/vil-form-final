@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { FormState } from "../types/form";
+import { services } from '../data/services';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -21,8 +22,6 @@ export function loadFormState(): FormState | null {
   const saved = localStorage.getItem('formState');
   return saved ? JSON.parse(saved) : null;
 }
-
-
 
 // Service area validation
 export function isInServiceArea(postalCode: string): boolean {
@@ -96,4 +95,42 @@ export function animateOnEnter(element: HTMLElement, animationClass: string) {
   return () => {
     observer.disconnect();
   };
+}
+
+// Service name normalization helpers
+const SERVICE_NAME_MAP: Record<string, string> = {
+  'Landscape Design & Build': 'landscape-design-build',
+  'Landscape Enhancement': 'landscape-enhancement',
+  'Routine Lawn Maintenance': 'lawn-maintenance',
+  'Snow Management': 'snow-management',
+  'Other': 'other'
+};
+
+export function normalizeServiceName(serviceName: string): string {
+  // If it's already a service ID, return it
+  if (services.some(s => s.id === serviceName)) {
+    return serviceName;
+  }
+  
+  // If it's a display name, convert to ID
+  if (SERVICE_NAME_MAP[serviceName]) {
+    return SERVICE_NAME_MAP[serviceName];
+  }
+  
+  // Return as-is if no mapping found
+  return serviceName;
+}
+
+export function normalizeServices(serviceList: string[]): string[] {
+  return serviceList.map(normalizeServiceName);
+}
+
+export function isMaintenanceService(serviceName: string): boolean {
+  const normalized = normalizeServiceName(serviceName);
+  return ['lawn-maintenance', 'snow-management'].includes(normalized);
+}
+
+export function isProjectService(serviceName: string): boolean {
+  const normalized = normalizeServiceName(serviceName);
+  return ['landscape-design-build', 'landscape-enhancement'].includes(normalized);
 }

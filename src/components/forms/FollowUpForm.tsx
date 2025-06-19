@@ -37,14 +37,18 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
   // Check if user has photos uploaded
   const hasPhotos = state.personalInfo.uploadedImages.length > 0;
 
-  // Determine which services are selected
-  const hasMaintenanceServices = state.services.some(serviceId => 
-    ['lawn-maintenance', 'snow-management'].includes(serviceId)
-  );
+  // Determine which services are selected - handle both IDs and display names
+  const hasMaintenanceServices = state.services.some(service => {
+    const maintenanceIds = ['lawn-maintenance', 'snow-management'];
+    const maintenanceNames = ['Routine Lawn Maintenance', 'Snow Management'];
+    return maintenanceIds.includes(service) || maintenanceNames.includes(service);
+  });
   
-  const hasProjectServices = state.services.some(serviceId => 
-    ['landscape-design-build', 'landscape-enhancement'].includes(serviceId)
-  );
+  const hasProjectServices = state.services.some(service => {
+    const projectIds = ['landscape-design-build', 'landscape-enhancement'];
+    const projectNames = ['Landscape Design & Build', 'Landscape Enhancement'];
+    return projectIds.includes(service) || projectNames.includes(service);
+  });
 
   // Photo Upload Component
   const PhotoUploadComponent: React.FC<{ onValidationChange: (isValid: boolean) => void }> = ({ onValidationChange }) => {
@@ -186,10 +190,20 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
 
   // If no relevant services are selected, redirect to home
   useEffect(() => {
-    if (!hasMaintenanceServices && !hasProjectServices) {
+    console.log('🔍 FollowUpForm: Checking services...', {
+      services: state.services,
+      hasMaintenanceServices,
+      hasProjectServices
+    });
+    
+    if (!hasMaintenanceServices && !hasProjectServices && state.services.length > 0) {
+      console.error('❌ FollowUpForm: No valid services found, redirecting to home');
+      console.log('Services in state:', state.services);
       navigate('/');
+    } else {
+      console.log('✅ FollowUpForm: Valid services found or no services loaded yet, proceeding with form');
     }
-  }, [hasMaintenanceServices, hasProjectServices, navigate]);
+  }, [hasMaintenanceServices, hasProjectServices, navigate, state.services]);
 
   const handleValidationChange = (pageIndex: number, componentKey: string, isValid: boolean) => {
     setValidationStates(prev => ({
