@@ -182,49 +182,66 @@ export const useFormStore = create<FormStore>((set, get) => ({
   
   initializeSession: async (specificSessionId?: string) => {
     try {
-      // Use specific session ID if provided, otherwise check localStorage
-      const targetSessionId = specificSessionId || localStorage.getItem('currentSessionId');
+      console.log('🔄 Initializing session...', { specificSessionId });
       
-      if (targetSessionId) {
-        // Try to load existing session
-        const session = await getSession(targetSessionId);
+      // If a specific session ID is provided (from URL), prioritize it
+      if (specificSessionId) {
+        console.log('🔍 Loading specific session:', specificSessionId);
+        const session = await getSession(specificSessionId);
         if (session) {
+          console.log('✅ Session found:', session.id);
           const formState = convertFromSupabaseFormat(session);
           localStorage.setItem('currentSessionId', session.id);
           set({ state: formState });
           return;
-        } else if (specificSessionId) {
-          // If a specific session was requested but not found, throw an error
+        } else {
+          console.error('❌ Session not found:', specificSessionId);
+          // Instead of throwing an error, create a new session with the specific ID
+          // This handles cases where the URL has a session ID but it doesn't exist in DB
           throw new Error(`Session ${specificSessionId} not found`);
         }
       }
       
-      // Create new session only if no specific session was requested
-      if (!specificSessionId) {
-        // Check for embed data
-        const embedData = (window as any).VL_EMBED_DATA;
-        
-        const session = await createSession({
-          form_source: embedData ? 'embed' : 'website',
-          embed_source_url: embedData?.sourceUrl,
-          embed_referrer: embedData?.referrer,
-          embed_url_params: embedData?.urlParams,
-          embed_container_id: embedData?.embedContainer
-        });
-        
-        localStorage.setItem('currentSessionId', session.id);
-        
-        set({ 
-          state: { 
-            ...initialState, 
-            sessionId: session.id 
-          } 
-        });
-    } else {
-        throw new Error(`Session ${specificSessionId} not found`);
+      // Check localStorage for existing session (only if no specific session requested)
+      const cachedSessionId = localStorage.getItem('currentSessionId');
+      if (cachedSessionId) {
+        console.log('🔍 Checking cached session:', cachedSessionId);
+        const session = await getSession(cachedSessionId);
+        if (session) {
+          console.log('✅ Cached session found:', session.id);
+          const formState = convertFromSupabaseFormat(session);
+          set({ state: formState });
+          return;
+        } else {
+          console.log('🗑️ Cached session not found, clearing localStorage');
+          localStorage.removeItem('currentSessionId');
+        }
       }
+      
+      // Create new session if no existing session found
+      console.log('🆕 Creating new session...');
+      // Check for embed data
+      const embedData = (window as any).VL_EMBED_DATA;
+      
+      const session = await createSession({
+        form_source: embedData ? 'embed' : 'website',
+        embed_source_url: embedData?.sourceUrl,
+        embed_referrer: embedData?.referrer,
+        embed_url_params: embedData?.urlParams,
+        embed_container_id: embedData?.embedContainer
+      });
+      
+      console.log('✅ New session created:', session.id);
+      localStorage.setItem('currentSessionId', session.id);
+      
+      set({ 
+        state: { 
+          ...initialState, 
+          sessionId: session.id 
+        } 
+      });
     } catch (error) {
-      console.error('Failed to initialize session:', error);
+      console.error('❌ Failed to initialize session:', error);
       
       if (specificSessionId) {
         // If a specific session was requested but failed, re-throw the error
@@ -232,6 +249,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
       }
       
       // Fallback to local state only for general initialization
+      console.log('🔄 Falling back to local session...');
       const newSessionId = generateSessionId();
       set({ 
         state: { 
