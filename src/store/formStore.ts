@@ -442,6 +442,39 @@ export const useFormStore = create<FormStore>((set, get) => ({
     });
     
     try {
+      // Ensure we have a session ID for submission
+      let sessionId = state.sessionId;
+      if (!sessionId) {
+        sessionId = generateSessionId();
+        console.log('Generated new session ID for agent form:', sessionId);
+        
+        // Update state with new session ID
+        set(currentState => {
+          const newState = {
+            ...currentState.state,
+            sessionId: sessionId
+          };
+          return { state: newState };
+        });
+      }
+      
+      // Get the updated state after potential sessionId update
+      const currentState = get().state;
+      
+      console.log('Submitting agent form with session ID:', sessionId);
+      console.log('Form state:', {
+        personalInfo: currentState.personalInfo,
+        services: currentState.services,
+        budgets: currentState.budgets,
+        address: currentState.address,
+        meetingDetails: {
+          scheduled: currentState.meetingScheduled,
+          staffMember: currentState.meetingStaffMember,
+          date: currentState.meetingDate,
+          time: currentState.meetingStartTime
+        }
+      });
+      
       // Send current form state to webhook via Edge Function
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-agent-form`, {
         method: 'POST',
@@ -450,15 +483,16 @@ export const useFormStore = create<FormStore>((set, get) => ({
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({
-          session_id: state.sessionId,
+          session_id: sessionId,
           form_type: 'agent',
-          form_state: state // Send the entire current form state
+          form_state: currentState // Send the entire current form state
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit agent form');
+        const errorText = await response.text();
+        console.error('Agent form submission failed:', response.status, errorText);
+        throw new Error(`Server responded with ${response.status}: ${errorText}`);
       }
 
       const responseData = await response.json();
@@ -466,7 +500,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
 
       // Mark as submitted
       const newState = {
-        ...state,
+        ...currentState,
         formSubmitted: true,
         isSubmitting: false,
         submissionError: null
@@ -484,7 +518,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
           ...currentState.state,
           formSubmitted: true,
           isSubmitting: false,
-          submissionError: 'Failed to submit agent form'
+          submissionError: error instanceof Error ? error.message : 'Failed to submit agent form'
         };
         
         return { state: newState };
