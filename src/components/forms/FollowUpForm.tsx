@@ -166,46 +166,55 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
     );
   };
 
-  // Generate pages based on services - with fallback for safety
+  // Generate pages based on services - ORIGINAL 4-PAGE STRUCTURE
   const pages = useMemo(() => {
     const pageList: FormPage[] = [];
     
     console.log('Generating pages...', { 
       hasMaintenanceServices, 
       hasProjectServices, 
+      hasPhotos,
       servicesCount: state.services.length,
       services: state.services 
     });
 
-    // If we have maintenance services OR no services detected (fallback)
-    if (hasMaintenanceServices || (!hasMaintenanceServices && !hasProjectServices && state.services.length === 0)) {
+    // Add photo upload page if user doesn't have photos
+    if (!hasPhotos) {
       pageList.push({
-        id: 'previous-provider',
-        title: 'Previous Provider',
+        id: 'photo-upload',
+        title: 'Property Photos',
         components: [
           {
-            title: 'Previous Provider Information',
-            component: PreviousProvider,
-            key: 'previousProvider'
+            title: 'Upload Photos',
+            component: PhotoUploadComponent,
+            key: 'photoUpload'
           }
         ]
       });
     }
 
-    // If we have project services OR no services detected (fallback)
-    if (hasProjectServices || (!hasMaintenanceServices && !hasProjectServices && state.services.length === 0)) {
+    // Add maintenance details page if maintenance services are selected
+    if (hasMaintenanceServices) {
       pageList.push({
-        id: 'project-scope',
-        title: 'Project Scope',
+        id: 'maintenance-details',
+        title: 'Maintenance Details',
         components: [
           {
-            title: 'Price vs Long Term',
+            title: 'Previous Provider',
+            component: PreviousProvider,
+            key: 'previousProvider'
+          },
+          {
+            title: 'Service Preference',
             component: PriceVsLongTerm,
             key: 'priceVsLongTerm'
           }
         ]
       });
+    }
 
+    // Add project details page if project services are selected
+    if (hasProjectServices) {
       pageList.push({
         id: 'project-details',
         title: 'Project Details',
