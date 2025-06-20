@@ -59,8 +59,11 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
 
   // Initialize fresh session on mount (no caching)
   useEffect(() => {
-    console.log('🆕 Initializing fresh agent form session (no caching)');
-    initializeFreshSession();
+    const initSession = async () => {
+      console.log('🆕 Initializing fresh agent form session (no caching)');
+      await initializeFreshSession();
+    };
+    initSession();
   }, []); // Empty dependency array - only run once on mount
 
   // Load Google Maps API
@@ -240,7 +243,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     }
   };
 
-  const handleStartNew = () => {
+  const handleStartNew = async () => {
     setIsSubmitted(false);
     // Reset all local state
     setTotalBudget(0);
@@ -250,7 +253,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     setSelectedMeetingTime(null);
     setSelectedStaffMember(null);
     // Initialize fresh session (no caching)
-    initializeFreshSession();
+    await initializeFreshSession();
   };
 
   const phoneDigits = state.personalInfo.phone.replace(/\D/g, '');

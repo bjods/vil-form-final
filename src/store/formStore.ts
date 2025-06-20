@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 interface FormStore {
   state: FormState;
   initializeSession: (specificSessionId?: string) => Promise<void>;
-  initializeFreshSession: () => void;
+  initializeFreshSession: () => Promise<void>;
   setStep: (step: number) => void;
   setSubStep: (subStep: number) => void;
   setServices: (services: string[]) => void;
@@ -252,20 +252,41 @@ export const useFormStore = create<FormStore>((set, get) => ({
     }
   },
 
-  initializeFreshSession: () => {
-    const newSessionId = generateSessionId();
-    const newState = {
-      ...initialState,
-      sessionId: newSessionId,
-      isSubmitting: false,
-      submissionError: null,
-      isAgentForm: true // Mark as agent form to disable caching
-    };
-    
-    // Clear any cached session data
-    localStorage.removeItem('currentSessionId');
-    console.log('🆕 Fresh agent form session created:', newSessionId);
-    set({ state: newState });
+  initializeFreshSession: async () => {
+    try {
+      // Create a fresh session in the database for agent form
+      const session = await createSession({
+        form_source: 'agent'
+      });
+      
+      const newState = {
+        ...initialState,
+        sessionId: session.id,
+        isSubmitting: false,
+        submissionError: null,
+        isAgentForm: true // Mark as agent form to disable caching
+      };
+      
+      // Clear any cached session data
+      localStorage.removeItem('currentSessionId');
+      console.log('🆕 Fresh agent form session created in database:', session.id);
+      set({ state: newState });
+    } catch (error) {
+      console.error('Failed to create agent form session:', error);
+      // Fallback to local session if database fails
+      const newSessionId = generateSessionId();
+      const newState = {
+        ...initialState,
+        sessionId: newSessionId,
+        isSubmitting: false,
+        submissionError: null,
+        isAgentForm: true
+      };
+      
+      localStorage.removeItem('currentSessionId');
+      console.log('🆕 Fresh agent form session created locally:', newSessionId);
+      set({ state: newState });
+    }
   },
 
   setStep: (step) => {
@@ -456,34 +477,139 @@ export const useFormStore = create<FormStore>((set, get) => ({
     });
     
     try {
-      // Send current form state to webhook via Edge Function
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-agent-form`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          session_id: state.sessionId,
-          form_state: state
-        }),
+      // Create form data for tracking (agent form specific)
+      const formData = {
+        formId: 'vl-agent-form',
+        sessionId: state.sessionId,
+        firstName: state.personalInfo.firstName,
+        lastName: state.personalInfo.lastName,
+        email: state.personalInfo.email,
+        phone: state.personalInfo.phone,
+        address: state.address,
+        postalCode: state.postalCode,
+        services: state.services.join(', '),
+        referralSource: state.personalInfo.referralSource,
+        totalBudget: Object.values(state.budgets).reduce((sum, budget) => sum + budget, 0),
+        notes: state.notes,
+        meetingScheduled: state.meetingScheduled,
+        meetingProvider: state.meetingStaffMember,
+        meetingDate: state.meetingDate,
+        meetingTime: state.meetingStartTime,
+        timestamp: new Date().toISOString(),
+        sourceUrl: window.location.href,
+        referrer: document.referrer,
+        urlParams: window.location.search
+      };
+
+      // Dispatch custom event for tracking tools (WhatConverts)
+      window.dispatchEvent(new CustomEvent('vl-agent-form-submitted', {
+        detail: formData,
+        bubbles: true,
+        cancelable: false
+      }));
+
+      // Create and submit hidden form for WhatConverts tracking
+      const hiddenForm = document.createElement('form');
+      hiddenForm.id = 'vl-agent-tracking-form';
+      hiddenForm.style.display = 'none';
+      hiddenForm.method = 'POST';
+      hiddenForm.action = '#';
+
+      // Add form fields
+      Object.entries(formData).forEach(([key, value]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = String(value || '');
+        hiddenForm.appendChild(input);
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to submit agent form');
-      }
+      // Append to body temporarily
+      document.body.appendChild(hiddenForm);
 
-      const responseData = await response.json();
-      console.log('Agent form submission response:', responseData);
+      // Trigger form submit event for tracking tools
+      const submitEvent = new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      });
+      hiddenForm.dispatchEvent(submitEvent);
 
-      // Mark as submitted
+      // Remove the form after a brief delay
+      setTimeout(() => {
+        if (document.body.contains(hiddenForm)) {
+          document.body.removeChild(hiddenForm);
+        }
+      }, 100);
+
+      // Mark as submitted and save to Supabase database
       const newState = {
         ...state,
         formSubmitted: true,
         isSubmitting: false,
         submissionError: null
       };
+      
+      if (newState.sessionId) {
+        // Convert form state to Supabase format and save
+        const supabaseData = convertToSupabaseFormat(newState);
+        const { error } = await supabase
+          .from('form_sessions')
+          .update({
+            ...supabaseData,
+            initial_form_completed: true,
+            form_source: 'agent',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', newState.sessionId);
+          
+        if (error) {
+          console.error('Error updating agent form in database:', error);
+          throw error;
+        }
+        
+        console.log('Agent form saved to database successfully');
+
+        // Send to Zapier webhook for agent forms
+        try {
+          const zapierPayload = {
+            session_id: newState.sessionId,
+            first_name: newState.personalInfo.firstName,
+            last_name: newState.personalInfo.lastName,
+            email: newState.personalInfo.email,
+            phone: newState.personalInfo.phone,
+            address: newState.address,
+            postal_code: newState.postalCode,
+            services: newState.services,
+            total_budget: Object.values(newState.budgets).reduce((sum, budget) => sum + budget, 0),
+            notes: newState.notes,
+            referral_source: newState.personalInfo.referralSource,
+            meeting_scheduled: newState.meetingScheduled,
+            meeting_provider: newState.meetingStaffMember,
+            meeting_date: newState.meetingDate,
+            meeting_start_time: newState.meetingStartTime,
+            meeting_end_time: newState.meetingEndTime,
+            form_source: 'agent',
+            submitted_at: new Date().toISOString()
+          };
+
+          const zapierResponse = await fetch('https://hooks.zapier.com/hooks/catch/17773320/uy0it3o/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(zapierPayload),
+          });
+
+          if (!zapierResponse.ok) {
+            console.error('Zapier webhook failed:', zapierResponse.status);
+          } else {
+            console.log('Agent form sent to Zapier successfully');
+          }
+        } catch (zapierError) {
+          console.error('Error sending to Zapier:', zapierError);
+          // Don't fail the entire submission if Zapier fails
+        }
+      }
       
       set(currentState => ({ state: newState }));
       
