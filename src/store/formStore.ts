@@ -91,7 +91,7 @@ const convertToSupabaseFormat = (state: FormState): Partial<FormSession> => ({
   referral_source: state.personalInfo.referralSource || undefined,
   previous_quotes: state.previousQuotes,
   price_vs_long_term: state.priceVsLongTerm || undefined,
-  previous_provider: state.previousProvider ? true : undefined,
+  previous_provider: state.previousProvider || undefined,
   site_challenges: state.siteChallenges || undefined,
   notes: state.notes || undefined,
   meeting_scheduled: state.meetingScheduled || false,
@@ -100,14 +100,9 @@ const convertToSupabaseFormat = (state: FormState): Partial<FormSession> => ({
   meeting_start_time: state.meetingStartTime || undefined,
   meeting_end_time: state.meetingEndTime || undefined,
   start_deadlines: Object.keys(state.startDeadlines).length > 0 ? state.startDeadlines : undefined,
-  upload_link_requested: state.personalInfo.textUploadLink,
   photo_urls: state.personalInfo.uploadedImages.length > 0 ? state.personalInfo.uploadedImages : undefined,
-  initial_form_completed: state.formSubmitted,
-  // Embed tracking data
-  embed_source_url: state.embedData?.sourceUrl,
-  embed_referrer: state.embedData?.referrer,
-  embed_url_params: state.embedData?.urlParams,
-  embed_container_id: state.embedData?.embedContainer
+  photos_uploaded: state.personalInfo.uploadedImages.length > 0,
+  initial_form_completed: state.formSubmitted
 });
 
 // Helper function to convert Supabase format to FormState
@@ -124,7 +119,7 @@ const convertFromSupabaseFormat = (session: FormSession): FormState => ({
   serviceDetails: session.service_details || {},
   projectScope: session.project_vision || '',
   startDeadlines: session.start_deadlines || {},
-  previousProvider: session.previous_provider ? 'yes' : '',
+  previousProvider: session.previous_provider || '',
   previousQuotes: session.previous_quotes,
   priceVsLongTerm: session.price_vs_long_term as 'price' | 'long-term' | undefined,
   siteChallenges: session.site_challenges || '',
@@ -140,20 +135,14 @@ const convertFromSupabaseFormat = (session: FormSession): FormState => ({
     lastName: session.last_name || '',
     email: session.email || '',
     phone: session.phone || '',
-    textUploadLink: session.upload_link_requested || false,
+    textUploadLink: false,
     referralSource: session.referral_source,
     uploadedImages: session.photo_urls || []
   },
   uploadLinkGenerated: false,
   formSubmitted: session.initial_form_completed || false,
   meetingBooked: session.meeting_scheduled || false,
-  // Embed tracking data
-  embedData: session.embed_source_url ? {
-    sourceUrl: session.embed_source_url,
-    referrer: session.embed_referrer || '',
-    urlParams: session.embed_url_params || '',
-    embedContainer: session.embed_container_id
-  } : undefined,
+  embedData: undefined,
   isSubmitting: false,
   submissionError: null,
   errors: {},
@@ -169,7 +158,8 @@ const autoSave = async (sessionId: string, state: FormState) => {
   
   saveTimeout = setTimeout(async () => {
     try {
-      await updateSession(sessionId, convertToSupabaseFormat(state));
+      const supabaseData = convertToSupabaseFormat(state);
+      await updateSession(sessionId, supabaseData);
       console.log('✅ Auto-saved to Supabase');
     } catch (error) {
       console.error('❌ Auto-save failed:', error);
@@ -220,15 +210,9 @@ export const useFormStore = create<FormStore>((set, get) => ({
       
       // Create new session if no existing session found
       console.log('🆕 Creating new session...');
-      // Check for embed data
-      const embedData = (window as any).VL_EMBED_DATA;
       
       const session = await createSession({
-        form_source: embedData ? 'embed' : 'website',
-        embed_source_url: embedData?.sourceUrl,
-        embed_referrer: embedData?.referrer,
-        embed_url_params: embedData?.urlParams,
-        embed_container_id: embedData?.embedContainer
+        form_source: 'website'
       });
       
       console.log('✅ New session created:', session.id);
@@ -603,13 +587,17 @@ export const useFormStore = create<FormStore>((set, get) => ({
 
   setPreviousProvider: (info) => {
     set(state => {
+      console.log('🔄 setPreviousProvider called:', { info, sessionId: state.state.sessionId });
       const newState = {
         ...state.state,
         previousProvider: info
       };
       
       if (newState.sessionId) {
+        console.log('🔄 Triggering auto-save for previous provider');
         autoSave(newState.sessionId, newState);
+      } else {
+        console.warn('⚠️ No sessionId found, auto-save skipped');
       }
       
       return { state: newState };

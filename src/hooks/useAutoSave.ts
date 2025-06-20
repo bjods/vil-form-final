@@ -51,11 +51,11 @@ export function useAutoSave(
          referral_source: data.personalInfo?.referralSource,
          previous_quotes: data.previousQuotes,
          price_vs_long_term: data.priceVsLongTerm,
-         previous_provider: !!data.previousProvider,
+         previous_provider: data.previousProvider,
          site_challenges: data.siteChallenges,
          start_deadlines: data.startDeadlines,
-         upload_link_requested: data.personalInfo?.textUploadLink,
          photo_urls: data.personalInfo?.uploadedImages,
+         photos_uploaded: data.personalInfo?.uploadedImages && data.personalInfo.uploadedImages.length > 0,
          meeting_scheduled: data.meetingBooked,
          initial_form_completed: data.formSubmitted
        }

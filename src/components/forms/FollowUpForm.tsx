@@ -31,11 +31,35 @@ interface FollowUpFormProps {
 }
 
 const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
-  const { state, submitForm, setMeetingBooked, setPersonalInfo } = useFormStore();
+  const { state, submitForm, setMeetingBooked, setPersonalInfo, initializeSession } = useFormStore();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(0);
   const [validationStates, setValidationStates] = useState<Record<string, boolean>>({});
   const [showThankYou, setShowThankYou] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Initialize session on mount
+  useEffect(() => {
+    const loadSession = async () => {
+      if (!sessionId) {
+        console.error('No session ID provided to FollowUpForm');
+        navigate('/');
+        return;
+      }
+
+      try {
+        console.log('Loading session:', sessionId);
+        await initializeSession(sessionId);
+        console.log('Session loaded successfully');
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Failed to load session:', error);
+        navigate('/');
+      }
+    };
+
+    loadSession();
+  }, [sessionId, initializeSession, navigate]);
 
   // Reset meeting booked status when follow-up form loads
   useEffect(() => {
@@ -43,7 +67,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
       console.log('Resetting meetingBooked to false for follow-up form');
       setMeetingBooked(false);
     }
-  }, []);
+  }, [state.meetingBooked, setMeetingBooked]);
 
   // Check if user has photos uploaded
   const hasPhotos = state.personalInfo.uploadedImages.length > 0;
@@ -107,61 +131,51 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
 
   // Photo Upload Component
   const PhotoUploadComponent: React.FC<{ onValidationChange: (isValid: boolean) => void }> = ({ onValidationChange }) => {
-    const [uploadedImages, setUploadedImages] = useState<string[]>(state.personalInfo.uploadedImages);
-
+    const { setPersonalInfo } = useFormStore();
+    
     const handleUpload = async (urls: string[]) => {
-      const newImages = [...uploadedImages, ...urls];
-      setUploadedImages(newImages);
+      console.log('Photos uploaded:', urls);
+      // Update the form store with the uploaded photo URLs
+      setPersonalInfo({ uploadedImages: urls });
       
-      // Update the form store with new images
-      setPersonalInfo({ uploadedImages: newImages });
+      // Update validation - photos are optional, so always valid
+      onValidationChange(true);
       
-      // Save to database immediately
+      // Also update the session in the database immediately
       if (state.sessionId) {
         try {
-          const { error } = await supabase
+          await supabase
             .from('form_sessions')
             .update({
-              photo_urls: newImages,
-              photos_uploaded: newImages.length > 0,
+              photo_urls: urls,
+              photos_uploaded: urls.length > 0,
               updated_at: new Date().toISOString()
             })
             .eq('id', state.sessionId);
-          
-          if (error) {
-            console.error('Error updating photos in database:', error);
-          } else {
-            console.log('Photos successfully saved to database');
-          }
+          console.log('Photos updated in database');
         } catch (error) {
-          console.error('Failed to save photos to database:', error);
+          console.error('Error updating photos in database:', error);
         }
       }
-      
-      // Always consider this page valid (photos are optional)
-      onValidationChange(true);
     };
 
-    // Set validation to true on mount since photos are optional
+    // Photos are optional, so always mark as valid
     useEffect(() => {
       onValidationChange(true);
     }, [onValidationChange]);
 
     return (
-      <div className="space-y-6">
-        <p className="text-sm text-gray-600">
-          Photos help us provide accurate quotes (optional)
-        </p>
+      <div className="space-y-4">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold mb-2">Property Photos</h3>
+          <p className="text-gray-600 mb-4">
+            Upload photos of your property to help us prepare for your consultation.
+          </p>
+        </div>
         <FileUpload
           onUpload={handleUpload}
           maxFiles={10}
-          maxSize={10 * 1024 * 1024}
         />
-        {uploadedImages.length > 0 && (
-          <p className="text-sm text-green-600">
-            {uploadedImages.length} {uploadedImages.length === 1 ? 'image' : 'images'} uploaded
-          </p>
-        )}
       </div>
     );
   };
@@ -358,6 +372,18 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
       handleFormComplete();
     }
   }, [state.meetingBooked, currentPage]);
+
+  // Show loading if session is still loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading session...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Thank you page - only show when meeting is booked and form is completed
   if (showThankYou) {

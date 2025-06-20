@@ -5,7 +5,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Database types based on our schema
+// Database types based on our actual schema
 export interface FormSession {
   id: string
   created_at: string
@@ -18,6 +18,7 @@ export interface FormSession {
   phone?: string
   address?: string
   postal_code?: string
+  city?: string
   inside_service_area?: boolean
   
   // Services & Project Details
@@ -26,7 +27,6 @@ export interface FormSession {
   budgets?: Record<string, number>
   project_vision?: string
   success_criteria?: string
-  timeline?: string
   referral_source?: string
   
   // Form Completion Status
@@ -35,48 +35,42 @@ export interface FormSession {
   follow_up_form_completed?: boolean
   
   // Photo Management
-  upload_link_requested?: boolean
-  upload_link_sent?: boolean
   photos_uploaded?: boolean
   photo_urls?: string[]
   
   // Meeting Management
   meeting_scheduled?: boolean
-  meeting_datetime?: string
-  meeting_provider?: string // 'Dom' or 'Charlie'
-  meeting_confirmation_sent?: boolean
-  google_event_id?: string
-  google_meet_link?: string
-  meeting_staff_member?: string
   meeting_date?: string
   meeting_start_time?: string
   meeting_end_time?: string
+  meeting_provider?: string // 'Dom' or 'Charlie'
   zapier_webhook_sent?: boolean
   zapier_webhook_sent_at?: string
   
-  // Reminder Tracking
+  // Follow-up Management
   follow_up_reminder_count?: number
-  photo_reminder_count?: number
-  meeting_reminder_count?: number
   last_reminder_sent?: string
+  follow_up_sequence_status?: string
+  follow_up_emails_sent?: number
+  next_follow_up_at?: string
+  follow_up_sequence_cancelled?: boolean
+  follow_up_url_generated?: string
   
   // Metadata
   form_source?: string // 'website', 'agent', 'phone'
-  agent_name?: string
-  
-  // Embed tracking (for WordPress/external sites)
-  embed_source_url?: string    // URL where form was embedded
-  embed_referrer?: string      // Referrer when form loaded
-  embed_url_params?: string    // URL parameters when form loaded
-  embed_container_id?: string  // Container element ID
+  form_type?: string
   
   // Additional fields
   previous_quotes?: boolean
   price_vs_long_term?: string // 'price' or 'long-term'
-  previous_provider?: boolean
+  previous_provider?: string
   site_challenges?: string
-  notes?: string
   start_deadlines?: Record<string, any>
+  notes?: string
+  
+  // Gravity Forms Integration
+  gravity_forms_data?: Record<string, any>
+  gravity_forms_entry_date?: string
 }
 
 // Helper functions for database operations
