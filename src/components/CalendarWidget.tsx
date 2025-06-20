@@ -7,6 +7,7 @@ import { useFormStore } from '../store/formStore';
 
 interface TimeSlot {
   time: string;
+  staff_member?: string;
 }
 
 interface CalendarWidgetProps {
@@ -163,11 +164,19 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
 
       const data = await response.json();
       
-      // The response structure is flat, not nested under 'meeting'
+      // Find the staff member for this time slot from our cached data
+      const timeSlot = availableSlots.find(slot => slot.time === selectedTime);
+      const rawStaffMember = timeSlot?.staff_member || data.data_sent?.meeting_details?.provider || 'Staff Member';
+      
+      // Map staff member names consistently with AgentCalendarWidget
+      const staffMemberName = rawStaffMember === 'dom' ? 'Dom' : 
+                             rawStaffMember === 'charlie' ? 'Charlie' : 
+                             rawStaffMember || 'Staff Member';
+      
       // Update local state with the meeting details from the response
       if (data.success && data.data_sent?.meeting_details) {
         setMeetingDetails(
-          data.data_sent.meeting_details.provider || 'Staff Member',
+          staffMemberName,
           data.data_sent.meeting_details.date || selectedDate,
           data.data_sent.meeting_details.start_time || selectedTime,
           data.data_sent.meeting_details.end_time || ''
@@ -175,7 +184,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
       } else {
         // Fallback if the response structure is different
         setMeetingDetails(
-          'Staff Member', // Default staff member
+          staffMemberName,
           selectedDate,
           selectedTime,
           '' // End time will be calculated

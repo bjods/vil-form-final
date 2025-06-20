@@ -30,6 +30,7 @@ interface FormStore {
   setEmbedData: (embedData: FormState['embedData']) => void;
   resetForm: () => void;
   clearErrors: () => void;
+  setAutoSaveEnabled: (enabled: boolean) => void;
 }
 
 const initialState: FormState = {
@@ -73,6 +74,9 @@ const initialState: FormState = {
   errors: {},
   touched: {}
 };
+
+// Global flag to control auto-save behavior
+let autoSaveEnabled = true;
 
 // Helper function to convert FormState to Supabase format
 const convertToSupabaseFormat = (state: FormState): Partial<FormSession> => ({
@@ -152,6 +156,12 @@ const convertFromSupabaseFormat = (session: FormSession): FormState => ({
 // Auto-save function with debouncing
 let saveTimeout: NodeJS.Timeout | null = null;
 const autoSave = async (sessionId: string, state: FormState) => {
+  // Skip auto-save if disabled (for agent form)
+  if (!autoSaveEnabled) {
+    console.log('🚫 Auto-save disabled');
+    return;
+  }
+  
   if (saveTimeout) {
     clearTimeout(saveTimeout);
   }
@@ -769,5 +779,10 @@ export const useFormStore = create<FormStore>((set, get) => ({
         touched: {}
       }
     }));
+  },
+
+  setAutoSaveEnabled: (enabled) => {
+    autoSaveEnabled = enabled;
+    console.log(`🔧 Auto-save ${enabled ? 'enabled' : 'disabled'}`);
   }
 }));
