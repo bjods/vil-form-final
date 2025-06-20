@@ -6,21 +6,16 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Checkbox } from '../ui/checkbox';
 import { CheckCircle2, Circle, Save, User, DollarSign, FileText, Calendar, Phone, MapPin } from 'lucide-react';
 import { services } from '../../data/services';
 import AgentCalendarWidget from '../AgentCalendarWidget';
-import { AutoSaveIndicator } from '../shared/AutoSaveIndicator';
 
-// Google Maps types
+// Declare Google Maps types
 declare global {
   interface Window {
     google: any;
-    initGoogleMaps: () => void;
   }
 }
-
-const GOOGLE_MAPS_API_KEY = 'AIzaSyBaxGwc3uGt97gA_hKji4L3s-QuIuejzYI';
 
 const referralSources = [
   'Cold Calling',
@@ -49,9 +44,6 @@ interface AgentFormProps {
 
 const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   const { state, setPersonalInfo, setServices, setBudget, setNotes, setAddress, setMeetingDetails, submitAgentForm, initializeSession } = useFormStore();
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [totalBudget, setTotalBudget] = useState<number>(0);
   const [notes, setNotesLocal] = useState('');
@@ -59,10 +51,10 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   const [selectedMeetingDate, setSelectedMeetingDate] = useState<string | null>(null);
   const [selectedMeetingTime, setSelectedMeetingTime] = useState<string | null>(null);
   const [selectedStaffMember, setSelectedStaffMember] = useState<string | null>(null);
-  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
-  const autocompleteRef = useRef<any>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const scriptLoadingRef = useRef(false);
+  
+  // Google Maps autocomplete refs
+  const addressInputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   // Initialize session on mount
   useEffect(() => {
@@ -85,126 +77,6 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     setAddressInput(state.address || '');
   }, [state.address]);
 
-  // Load Google Maps script and setup autocomplete
-  const loadGoogleMapsScript = () => {
-    if (scriptLoadingRef.current) return;
-    
-    if (document.getElementById('google-maps-script') || window.google?.maps) {
-      setIsScriptLoaded(true);
-      setupAutocomplete();
-      return;
-    }
-
-    scriptLoadingRef.current = true;
-    
-    const callbackName = `initGoogleMaps_${Date.now()}`;
-    
-    (window as any)[callbackName] = () => {
-      setIsScriptLoaded(true);
-      setupAutocomplete();
-      delete (window as any)[callbackName];
-    };
-    
-    const script = document.createElement('script');
-    script.id = 'google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=${callbackName}`;
-    script.async = true;
-    script.defer = true;
-    script.onerror = () => {
-      scriptLoadingRef.current = false;
-      console.error('Failed to load Google Maps script');
-    };
-    script.onload = () => {
-      scriptLoadingRef.current = false;
-    };
-    document.head.appendChild(script);
-  };
-  
-  useEffect(() => {
-    if (window.google?.maps?.places) {
-      setIsScriptLoaded(true);
-      setupAutocomplete();
-      return;
-    }
-    
-    loadGoogleMapsScript();
-    
-    return () => {
-      if (autocompleteRef.current) {
-        window.google?.maps?.event?.clearInstanceListeners(autocompleteRef.current);
-        autocompleteRef.current = null;
-      }
-      scriptLoadingRef.current = false;
-    };
-  }, []);
-  
-  const setupAutocomplete = () => {
-    if (!inputRef.current || !window.google?.maps?.places || autocompleteRef.current) return;
-    
-    try {
-      autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
-        componentRestrictions: { country: 'ca' },
-        fields: ['address_components', 'formatted_address']
-      });
-      
-      autocompleteRef.current.addListener('place_changed', handlePlaceChanged);
-    } catch (error) {
-      console.error('Error setting up autocomplete:', error);
-    }
-  };
-  
-  const handlePlaceChanged = () => {
-    const place = autocompleteRef.current.getPlace();
-    if (!place?.address_components) {
-      return;
-    }
-    
-    const fullAddress = place.formatted_address;
-    setAddressInput(fullAddress);
-    
-    let extractedPostalCode = '';
-    for (const component of place.address_components as any[]) {
-      if (component.types && component.types.includes('postal_code')) {
-        extractedPostalCode = component.short_name || '';
-        break;
-      }
-    }
-    
-    // Save to form store - assuming service area is valid for agent form
-    setAddress(fullAddress, extractedPostalCode, true);
-  };
-
-  const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setAddressInput(value);
-    // For manual input, save without postal code
-    setAddress(value, '', true);
-  };
-
-  // Auto-save functionality with debouncing
-  useEffect(() => {
-    if (!state.sessionId) return;
-
-    const timeoutId = setTimeout(async () => {
-      try {
-    setIsSaving(true);
-        setSaveError(null);
-        
-        // Update the form store which will trigger auto-save
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        setLastSaved(new Date());
-      } catch (error) {
-        setSaveError('Failed to save');
-        console.error('Auto-save error:', error);
-      } finally {
-        setIsSaving(false);
-      }
-    }, 1000);
-
-    return () => clearTimeout(timeoutId);
-  }, [state.personalInfo, state.services, totalBudget, notes, state.address, state.sessionId]);
-
   // Update notes in store when local notes change
   useEffect(() => {
     if (setNotes) {
@@ -212,7 +84,42 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     }
   }, [notes, setNotes]);
 
-  // Email validation (kept for display purposes but not required)
+  // Initialize Google Maps autocomplete
+  useEffect(() => {
+    if (window.google && window.google.maps && window.google.maps.places && addressInputRef.current) {
+      try {
+        autocompleteRef.current = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+          types: ['address'],
+          componentRestrictions: { country: 'ca' }, // Restrict to Canada
+          fields: ['formatted_address', 'address_components', 'geometry']
+        });
+
+        const autocomplete = autocompleteRef.current;
+        if (autocomplete) {
+          autocomplete.addListener('place_changed', () => {
+            const place = autocomplete.getPlace();
+          if (place && place.formatted_address) {
+            const address = place.formatted_address;
+            setAddressInput(address);
+            setAddress(address, '', true); // Assume service area is valid for agent form
+            
+            // Extract postal code if available
+            const postalCodeComponent = place.address_components?.find(
+              component => component.types.includes('postal_code')
+            );
+            if (postalCodeComponent) {
+              // You could set postal code here if needed
+            }
+          }
+        });
+        }
+      } catch (error) {
+        console.error('Error initializing Google Maps autocomplete:', error);
+      }
+    }
+  }, [setAddress]);
+
+  // Email validation
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -255,6 +162,15 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     });
   };
 
+  const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAddressInput(value);
+    // Only update address in store if not using autocomplete
+    if (!autocompleteRef.current) {
+      setAddress(value, '', true);
+    }
+  };
+
   const handleMeetingSelection = (date: string | null, time: string | null, staffMember?: string | null) => {
     setSelectedMeetingDate(date);
     setSelectedMeetingTime(time);
@@ -263,10 +179,8 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
 
   const handleSubmit = async () => {
     try {
-      setIsSaving(true);
-      
       // Save meeting details if selected
-      if (selectedMeetingDate && selectedMeetingTime) {
+      if (selectedMeetingDate && selectedMeetingTime && selectedStaffMember) {
         // Calculate end time (15 minutes after start time)
         const [hours, minutes] = selectedMeetingTime.split(':').map(Number);
         const endDate = new Date();
@@ -277,22 +191,21 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
           hour12: false 
         });
         
-        // Use the actual staff member name, with fallback to 'Staff Member'
-        const staffMemberName = selectedStaffMember === 'dom' ? 'Dom' : 
-                               selectedStaffMember === 'charlie' ? 'Charlie' : 
-                               selectedStaffMember || 'Staff Member';
-        
-        // Save meeting details to form store (will be included in submission)
-        setMeetingDetails(staffMemberName, selectedMeetingDate, selectedMeetingTime, endTime);
+        // Save meeting details to form store with the actual staff member name
+        // Use lowercase 'dom' or 'charlie' as these are the database values
+        setMeetingDetails(selectedStaffMember, selectedMeetingDate, selectedMeetingTime, endTime);
       }
       
-      await submitAgentForm();
-      setIsSubmitted(true);
+      const success = await submitAgentForm();
+      if (success) {
+        setIsSubmitted(true);
+      } else {
+        console.error('Form submission failed');
+        alert('Failed to submit form. Please try again.');
+      }
     } catch (error) {
       console.error('Failed to submit form:', error);
-      setSaveError('Failed to submit form');
-    } finally {
-      setIsSaving(false);
+      alert('Failed to submit form. Please try again.');
     }
   };
 
@@ -302,7 +215,6 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     window.location.reload();
   };
 
-  // No validation required - form can always be submitted
   const phoneDigits = state.personalInfo.phone.replace(/\D/g, '');
 
   if (isSubmitted) {
@@ -338,7 +250,14 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="max-w-4xl mx-auto p-6 space-y-8">
+      {/* Google Maps API Script */}
+      <script
+        src={`https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`}
+        async
+        defer
+      />
+      
       {/* Header */}
       <Card>
         <CardHeader>
@@ -352,11 +271,11 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
                 Fast lead capture for door-to-door and phone sales
               </CardDescription>
             </div>
-            <AutoSaveIndicator 
-              isSaving={isSaving}
-              lastSaved={lastSaved}
-              error={saveError}
-            />
+            {state.submissionError && (
+              <div className="text-red-500 text-sm">
+                {state.submissionError}
+              </div>
+            )}
           </div>
         </CardHeader>
       </Card>
@@ -365,91 +284,77 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Phone className="w-5 h-5" />
+            <User className="h-5 w-5" />
             Contact Information
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="first-name">First Name</Label>
+              <Label htmlFor="firstName">First Name *</Label>
               <Input
-                id="first-name"
+                id="firstName"
                 value={state.personalInfo.firstName}
                 onChange={(e) => setPersonalInfo({ firstName: e.target.value })}
-                placeholder="John"
+                placeholder="Enter first name"
+                required
               />
             </div>
             <div>
-              <Label htmlFor="last-name">Last Name</Label>
+              <Label htmlFor="lastName">Last Name *</Label>
               <Input
-                id="last-name"
+                id="lastName"
                 value={state.personalInfo.lastName}
                 onChange={(e) => setPersonalInfo({ lastName: e.target.value })}
-                placeholder="Doe"
+                placeholder="Enter last name"
+                required
               />
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={state.personalInfo.email}
-                onChange={(e) => setPersonalInfo({ email: e.target.value })}
-                placeholder="john.doe@example.com"
-              />
-              {state.personalInfo.email && !validateEmail(state.personalInfo.email) && (
-                <p className="text-amber-500 text-sm mt-1">Email format doesn't look quite right</p>
-              )}
-            </div>
-            
-            <div>
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={state.personalInfo.phone}
-                onChange={handlePhoneChange}
-                placeholder="(555) 123-4567"
-              />
-              {state.personalInfo.phone && phoneDigits.length > 0 && phoneDigits.length < 10 && (
-                <p className="text-amber-500 text-sm mt-1">Phone number seems incomplete</p>
-              )}
-            </div>
-          </div>
-
-          {/* Address Field */}
           <div>
-            <Label htmlFor="address">Property Address</Label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MapPin className="w-4 h-4 text-gray-400" />
-              </div>
-              <Input
-                ref={inputRef}
-                id="address"
-                value={addressInput}
-                onChange={handleAddressInputChange}
-                placeholder="Start typing address..."
-                className="pl-10"
-              />
-            </div>
-            <p className="text-sm text-gray-500 mt-1">
-              Start typing and select from dropdown for best results
-            </p>
+            <Label htmlFor="email">Email *</Label>
+            <Input
+              id="email"
+              type="email"
+              value={state.personalInfo.email}
+              onChange={(e) => setPersonalInfo({ email: e.target.value })}
+              placeholder="Enter email address"
+              required
+            />
+            {state.personalInfo.email && !validateEmail(state.personalInfo.email) && (
+              <p className="text-sm text-red-600 mt-1">Please enter a valid email address</p>
+            )}
           </div>
-
+          
           <div>
-            <Label htmlFor="referral-source">How did they find us?</Label>
-            <Select
-              value={state.personalInfo.referralSource || ''}
-              onValueChange={(value) => setPersonalInfo({ referralSource: value })}
-            >
+            <Label htmlFor="phone">Phone *</Label>
+            <Input
+              id="phone"
+              value={state.personalInfo.phone}
+              onChange={handlePhoneChange}
+              placeholder="(555) 123-4567"
+              required
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="address">Property Address *</Label>
+            <Input
+              ref={addressInputRef}
+              id="address"
+              value={addressInput}
+              onChange={handleAddressInputChange}
+              placeholder="Start typing your address..."
+              required
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="referralSource">How did you hear about us?</Label>
+            <Select value={state.personalInfo.referralSource || ''} onValueChange={(value) => setPersonalInfo({ referralSource: value })}>
               <SelectTrigger>
-                <SelectValue placeholder="Select source (optional)" />
+                <SelectValue placeholder="Select referral source" />
               </SelectTrigger>
               <SelectContent>
                 {referralSources.map((source) => (
@@ -553,29 +458,48 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
       </Card>
 
       {/* Calendar Booking */}
-      <AgentCalendarWidget 
-        onSelectionChange={handleMeetingSelection}
-        selectedDate={selectedMeetingDate}
-        selectedTime={selectedMeetingTime}
-      />
-
-      {/* Submit Button - Always at the bottom */}
       <Card>
-        <CardContent className="p-6">
-          <Button 
-            onClick={handleSubmit}
-            disabled={isSaving}
-            size="lg"
-            className="w-full"
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {isSaving ? 'Saving...' : 'Submit Lead'}
-          </Button>
-          <p className="text-sm text-gray-500 mt-2 text-center">
-            No fields are required - submit anytime to save the lead
-          </p>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Schedule Discovery Call (Optional)
+          </CardTitle>
+          <CardDescription>
+            Select a date and time for a 15-minute discovery call. This will be saved when you submit the lead.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AgentCalendarWidget
+            onSelectionChange={handleMeetingSelection}
+            selectedDate={selectedMeetingDate}
+            selectedTime={selectedMeetingTime}
+          />
+          
+          {selectedMeetingDate && selectedMeetingTime && selectedStaffMember && (
+            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2 text-green-800">
+                <CheckCircle2 className="h-4 w-4" />
+                <span className="font-medium">Meeting Selected</span>
+              </div>
+              <p className="text-sm text-green-700 mt-1">
+                {selectedMeetingDate} at {selectedMeetingTime} with {selectedStaffMember === 'dom' ? 'Dom' : 'Charlie'}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Submit Button */}
+      <div className="flex justify-center">
+        <Button 
+          onClick={handleSubmit}
+          size="lg"
+          className="w-full max-w-md"
+          disabled={state.isSubmitting || !state.personalInfo.firstName || !state.personalInfo.lastName || !state.personalInfo.email || !state.personalInfo.phone || !addressInput}
+        >
+          {state.isSubmitting ? 'Saving Lead...' : 'Save Lead'}
+        </Button>
+      </div>
     </div>
   );
 };

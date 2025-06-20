@@ -441,8 +441,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
         },
         body: JSON.stringify({
           session_id: state.sessionId,
-          form_type: 'agent',
-          form_state: state // Send the entire current form state
+          form_state: state
         }),
       });
 
@@ -468,13 +467,13 @@ export const useFormStore = create<FormStore>((set, get) => ({
     } catch (error) {
       console.error('Agent form submission error:', error);
       
-      // Mark submission error but don't prevent navigation
+      // Mark submission error
       set(currentState => {
         const newState = {
           ...currentState.state,
-          formSubmitted: true,
+          formSubmitted: false,
           isSubmitting: false,
-          submissionError: 'Failed to submit agent form'
+          submissionError: 'Failed to submit agent form: ' + (error instanceof Error ? error.message : String(error))
         };
         
         return { state: newState };
