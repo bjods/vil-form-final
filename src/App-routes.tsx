@@ -139,9 +139,7 @@ const AppRoutes: React.FC = () => {
         <Route 
           path="/follow-up/:sessionId" 
           element={
-            <SessionLoader>
-              <FollowUpForm />
-            </SessionLoader>
+            <FollowUpForm />
           } 
         />
         

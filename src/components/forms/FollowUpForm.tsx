@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useFormStore } from '../../store/formStore';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
@@ -26,11 +26,8 @@ interface FormPage {
   }[];
 }
 
-interface FollowUpFormProps {
-  sessionId?: string;
-}
-
-const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
+const FollowUpForm: React.FC = () => {
+  const { sessionId } = useParams<{ sessionId: string }>();
   const { state, submitForm, setMeetingBooked, setPersonalInfo, initializeSession } = useFormStore();
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(0);

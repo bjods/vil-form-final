@@ -587,17 +587,13 @@ export const useFormStore = create<FormStore>((set, get) => ({
 
   setPreviousProvider: (info) => {
     set(state => {
-      console.log('🔄 setPreviousProvider called:', { info, sessionId: state.state.sessionId });
       const newState = {
         ...state.state,
         previousProvider: info
       };
       
       if (newState.sessionId) {
-        console.log('🔄 Triggering auto-save for previous provider');
         autoSave(newState.sessionId, newState);
-      } else {
-        console.warn('⚠️ No sessionId found, auto-save skipped');
       }
       
       return { state: newState };
