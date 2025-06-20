@@ -376,15 +376,9 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
               id="address"
               value={addressInput}
               onChange={handleAddressInputChange}
-              placeholder={isGoogleMapsLoaded ? "Start typing your address..." : "Loading address autocomplete..."}
-              disabled={!isGoogleMapsLoaded}
+              placeholder="Start typing your address..."
               required
             />
-            {isGoogleMapsLoaded && (
-              <p className="text-xs text-green-600 mt-1">
-                ✅ Address autocomplete ready
-              </p>
-            )}
           </div>
           
           <div>
