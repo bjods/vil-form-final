@@ -31,6 +31,7 @@ interface FormStore {
   setEmbedData: (embedData: FormState['embedData']) => void;
   resetForm: () => void;
   clearErrors: () => void;
+  wipeBrowserData: () => void;
 }
 
 const initialState: FormState = {
@@ -458,176 +459,245 @@ export const useFormStore = create<FormStore>((set, get) => ({
   submitAgentForm: async () => {
     const { state } = get();
     
+    console.log('🚀 Starting agent form submission...');
+    console.log('📊 Current form state:', state);
+    
     // Prevent multiple submissions
-    if (state.formSubmitted || state.isSubmitting) {
-      console.log('Agent form already submitted or submitting, skipping...');
-      return true;
+    if (state.isSubmitting) {
+      console.log('⚠️ Already submitting, skipping...');
+      return false;
     }
     
-    console.log('Starting agent form submission...');
-    
     // Set submitting state
-    set(currentState => {
-      const newState = {
+    set(currentState => ({
+      state: {
         ...currentState.state,
         isSubmitting: true,
         submissionError: null
-      };
-      return { state: newState };
-    });
+      }
+    }));
     
     try {
-      // Create form data for tracking (agent form specific)
-      const formData = {
-        formId: 'vl-agent-form',
-        sessionId: state.sessionId,
-        firstName: state.personalInfo.firstName,
-        lastName: state.personalInfo.lastName,
-        email: state.personalInfo.email,
-        phone: state.personalInfo.phone,
-        address: state.address,
-        postalCode: state.postalCode,
-        services: state.services.join(', '),
-        referralSource: state.personalInfo.referralSource,
-        totalBudget: Object.values(state.budgets).reduce((sum, budget) => sum + budget, 0),
-        notes: state.notes,
-        meetingScheduled: state.meetingScheduled,
-        meetingProvider: state.meetingStaffMember,
-        meetingDate: state.meetingDate,
-        meetingTime: state.meetingStartTime,
-        timestamp: new Date().toISOString(),
-        sourceUrl: window.location.href,
-        referrer: document.referrer,
-        urlParams: window.location.search
-      };
-
-      // Dispatch custom event for tracking tools (WhatConverts)
-      window.dispatchEvent(new CustomEvent('vl-agent-form-submitted', {
-        detail: formData,
-        bubbles: true,
-        cancelable: false
-      }));
-
-      // Create and submit hidden form for WhatConverts tracking
-      const hiddenForm = document.createElement('form');
-      hiddenForm.id = 'vl-agent-tracking-form';
-      hiddenForm.style.display = 'none';
-      hiddenForm.method = 'POST';
-      hiddenForm.action = '#';
-
-      // Add form fields
-      Object.entries(formData).forEach(([key, value]) => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = String(value || '');
-        hiddenForm.appendChild(input);
-      });
-
-      // Append to body temporarily
-      document.body.appendChild(hiddenForm);
-
-      // Trigger form submit event for tracking tools
-      const submitEvent = new Event('submit', {
-        bubbles: true,
-        cancelable: true
-      });
-      hiddenForm.dispatchEvent(submitEvent);
-
-      // Remove the form after a brief delay
-      setTimeout(() => {
-        if (document.body.contains(hiddenForm)) {
-          document.body.removeChild(hiddenForm);
-        }
-      }, 100);
-
-      // Mark as submitted and save to Supabase database
-      const newState = {
-        ...state,
-        formSubmitted: true,
-        isSubmitting: false,
-        submissionError: null
-      };
+      // Validate required fields
+      const errors: string[] = [];
+      if (!state.personalInfo.firstName?.trim()) errors.push('First name is required');
+      if (!state.personalInfo.email?.trim()) errors.push('Email is required');
+      if (!state.personalInfo.phone?.trim()) errors.push('Phone is required');
+      if (!state.address?.trim()) errors.push('Address is required');
       
-      if (newState.sessionId) {
-        // Convert form state to Supabase format and save
-        const supabaseData = convertToSupabaseFormat(newState);
-        const { error } = await supabase
-          .from('form_sessions')
-          .update({
-            ...supabaseData,
-            initial_form_completed: true,
-            form_source: 'agent',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', newState.sessionId);
-          
-        if (error) {
-          console.error('Error updating agent form in database:', error);
-          throw error;
-        }
-        
-        console.log('Agent form saved to database successfully');
-
-        // Send to Zapier webhook for agent forms
-        try {
-          const zapierPayload = {
-            session_id: newState.sessionId,
-            first_name: newState.personalInfo.firstName,
-            last_name: newState.personalInfo.lastName,
-            email: newState.personalInfo.email,
-            phone: newState.personalInfo.phone,
-            address: newState.address,
-            postal_code: newState.postalCode,
-            services: newState.services,
-            total_budget: Object.values(newState.budgets).reduce((sum, budget) => sum + budget, 0),
-            notes: newState.notes,
-            referral_source: newState.personalInfo.referralSource,
-            meeting_scheduled: newState.meetingScheduled,
-            meeting_provider: newState.meetingStaffMember,
-            meeting_date: newState.meetingDate,
-            meeting_start_time: newState.meetingStartTime,
-            meeting_end_time: newState.meetingEndTime,
-            form_source: 'agent',
-            submitted_at: new Date().toISOString()
-          };
-
-          const zapierResponse = await fetch('https://hooks.zapier.com/hooks/catch/17773320/uy0it3o/', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(zapierPayload),
-          });
-
-          if (!zapierResponse.ok) {
-            console.error('Zapier webhook failed:', zapierResponse.status);
-          } else {
-            console.log('Agent form sent to Zapier successfully');
-          }
-        } catch (zapierError) {
-          console.error('Error sending to Zapier:', zapierError);
-          // Don't fail the entire submission if Zapier fails
-        }
+      if (errors.length > 0) {
+        throw new Error(`Validation failed: ${errors.join(', ')}`);
       }
       
-      set(currentState => ({ state: newState }));
+      if (!state.sessionId) {
+        throw new Error('No session ID available');
+      }
       
-      return true;
-    } catch (error) {
-      console.error('Agent form submission error:', error);
+      console.log('✅ Validation passed, updating database...');
       
-      // Mark submission error
-      set(currentState => {
-        const newState = {
-          ...currentState.state,
-          formSubmitted: false,
-          isSubmitting: false,
-          submissionError: 'Failed to submit agent form: ' + (error instanceof Error ? error.message : String(error))
+      // Calculate total budget
+      const totalBudget = Object.values(state.budgets).reduce((sum, budget) => sum + (budget || 0), 0);
+      
+      // Prepare complete database update payload
+      const dbPayload = {
+        // Personal information
+        first_name: state.personalInfo.firstName.trim(),
+        last_name: state.personalInfo.lastName?.trim() || null,
+        email: state.personalInfo.email.trim().toLowerCase(),
+        phone: state.personalInfo.phone.trim(),
+        address: state.address.trim(),
+        postal_code: state.postalCode?.trim() || null,
+        
+        // Form metadata
+        form_source: 'agent',
+        form_type: 'agent',
+        inside_service_area: true, // Agent forms assume inside service area
+        
+        // Services and details
+        services: state.services.length > 0 ? state.services : [],
+        budgets: Object.keys(state.budgets).length > 0 ? state.budgets : {},
+        notes: state.notes?.trim() || null,
+        referral_source: state.personalInfo.referralSource?.trim() || null,
+        
+        // Meeting details (if scheduled)
+        meeting_scheduled: Boolean(state.meetingScheduled && state.meetingStaffMember && state.meetingDate),
+        meeting_provider: state.meetingStaffMember?.trim() || null,
+        meeting_date: state.meetingDate || null,
+        meeting_start_time: state.meetingStartTime || null,
+        meeting_end_time: state.meetingEndTime || null,
+        
+        // Form completion status
+        initial_form_completed: true,
+        zapier_webhook_sent: false, // Will be updated after webhook succeeds
+        
+        // Timestamps
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log('📝 Database payload:', dbPayload);
+      
+      // Update database
+      const { data: updatedSession, error: dbError } = await supabase
+        .from('form_sessions')
+        .update(dbPayload)
+        .eq('id', state.sessionId)
+        .select()
+        .single();
+        
+      if (dbError) {
+        console.error('❌ Database update failed:', dbError);
+        throw new Error(`Database update failed: ${dbError.message}`);
+      }
+      
+      console.log('✅ Database updated successfully:', updatedSession);
+      
+      // Prepare Zapier webhook payload
+      const zapierPayload = {
+        // Session info
+        session_id: state.sessionId,
+        form_source: 'agent',
+        submitted_at: new Date().toISOString(),
+        
+        // Personal information
+        first_name: state.personalInfo.firstName.trim(),
+        last_name: state.personalInfo.lastName?.trim() || '',
+        email: state.personalInfo.email.trim().toLowerCase(),
+        phone: state.personalInfo.phone.trim(),
+        address: state.address.trim(),
+        postal_code: state.postalCode?.trim() || '',
+        referral_source: state.personalInfo.referralSource?.trim() || '',
+        
+        // Services and budget
+        services: state.services,
+        services_text: state.services.length > 0 ? state.services.join(', ') : 'No services selected',
+        budgets: state.budgets,
+        total_budget: totalBudget,
+        notes: state.notes?.trim() || '',
+        
+        // Meeting details
+        meeting_scheduled: Boolean(state.meetingScheduled && state.meetingStaffMember && state.meetingDate),
+        meeting_provider: state.meetingStaffMember?.trim() || '',
+        meeting_date: state.meetingDate || '',
+        meeting_start_time: state.meetingStartTime || '',
+        meeting_end_time: state.meetingEndTime || '',
+        
+        // Additional context
+        inside_service_area: true,
+        form_completed: true
+      };
+      
+      console.log('🔗 Sending to Zapier webhook:', zapierPayload);
+      
+      // Send to Zapier webhook
+      try {
+        const zapierResponse = await fetch('https://hooks.zapier.com/hooks/catch/17773320/uy0it3o/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(zapierPayload),
+        });
+        
+        if (zapierResponse.ok) {
+          console.log('✅ Zapier webhook sent successfully');
+          
+          // Update webhook sent status
+          await supabase
+            .from('form_sessions')
+            .update({
+              zapier_webhook_sent: true,
+              zapier_webhook_sent_at: new Date().toISOString()
+            })
+            .eq('id', state.sessionId);
+            
+        } else {
+          console.error('⚠️ Zapier webhook failed:', zapierResponse.status, zapierResponse.statusText);
+          // Don't fail the entire submission if webhook fails
+        }
+      } catch (zapierError) {
+        console.error('⚠️ Zapier webhook error:', zapierError);
+        // Don't fail the entire submission if webhook fails
+      }
+      
+      // Create WhatConverts tracking event
+      try {
+        const trackingData = {
+          formId: 'vl-agent-form',
+          sessionId: state.sessionId,
+          firstName: state.personalInfo.firstName,
+          lastName: state.personalInfo.lastName || '',
+          email: state.personalInfo.email,
+          phone: state.personalInfo.phone,
+          address: state.address,
+          services: state.services.join(', '),
+          totalBudget: totalBudget,
+          timestamp: new Date().toISOString()
         };
         
-        return { state: newState };
-      });
+        // Dispatch custom event for WhatConverts
+        window.dispatchEvent(new CustomEvent('vl-agent-form-submitted', {
+          detail: trackingData,
+          bubbles: true,
+          cancelable: false
+        }));
+        
+        // Create hidden form for WhatConverts tracking
+        const hiddenForm = document.createElement('form');
+        hiddenForm.id = 'vl-agent-tracking-form';
+        hiddenForm.style.display = 'none';
+        hiddenForm.method = 'POST';
+        hiddenForm.action = '#';
+        
+        Object.entries(trackingData).forEach(([key, value]) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = String(value || '');
+          hiddenForm.appendChild(input);
+        });
+        
+        document.body.appendChild(hiddenForm);
+        
+        const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+        hiddenForm.dispatchEvent(submitEvent);
+        
+        setTimeout(() => {
+          if (document.body.contains(hiddenForm)) {
+            document.body.removeChild(hiddenForm);
+          }
+        }, 100);
+        
+        console.log('✅ WhatConverts tracking event created');
+      } catch (trackingError) {
+        console.error('⚠️ Tracking error:', trackingError);
+        // Don't fail submission if tracking fails
+      }
+      
+      console.log('🎉 Agent form submission completed successfully!');
+      
+      // Update form state to submitted
+      set(currentState => ({
+        state: {
+          ...currentState.state,
+          formSubmitted: true,
+          isSubmitting: false,
+          submissionError: null
+        }
+      }));
+      
+      return true;
+      
+    } catch (error) {
+      console.error('💥 Agent form submission failed:', error);
+      
+      // Update error state
+      set(currentState => ({
+        state: {
+          ...currentState.state,
+          isSubmitting: false,
+          submissionError: error instanceof Error ? error.message : 'Submission failed'
+        }
+      }));
       
       return false;
     }
@@ -911,5 +981,43 @@ export const useFormStore = create<FormStore>((set, get) => ({
         touched: {}
       }
     }));
+  },
+
+  wipeBrowserData: () => {
+    console.log('🧹 Wiping all browser data...');
+    
+    // Clear all localStorage data
+    localStorage.clear();
+    
+    // Clear sessionStorage
+    sessionStorage.clear();
+    
+    // Reset form store to initial state
+    set({ state: initialState });
+    
+    // Clear any cached form data in the browser
+    try {
+      // Clear any form elements that might have cached data
+      const forms = document.querySelectorAll('form');
+      forms.forEach(form => {
+        if (form instanceof HTMLFormElement) {
+          form.reset();
+        }
+      });
+      
+      // Clear any input elements
+      const inputs = document.querySelectorAll('input, textarea, select');
+      inputs.forEach(input => {
+        if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
+          input.value = '';
+        } else if (input instanceof HTMLSelectElement) {
+          input.selectedIndex = 0;
+        }
+      });
+    } catch (error) {
+      console.warn('Could not clear all form elements:', error);
+    }
+    
+    console.log('✅ Browser data wiped successfully');
   }
 }));

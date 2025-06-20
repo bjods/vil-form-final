@@ -43,7 +43,7 @@ interface AgentFormProps {
 }
 
 const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
-  const { state, setPersonalInfo, setServices, setBudget, setNotes, setAddress, setMeetingDetails, submitAgentForm, initializeFreshSession } = useFormStore();
+  const { state, setPersonalInfo, setServices, setBudget, setNotes, setAddress, setMeetingDetails, submitAgentForm, initializeFreshSession, wipeBrowserData } = useFormStore();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [totalBudget, setTotalBudget] = useState<number>(0);
   const [notes, setNotesLocal] = useState('');
@@ -244,16 +244,24 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   };
 
   const handleStartNew = async () => {
-    setIsSubmitted(false);
+    console.log('🔄 Starting new agent form...');
+    
+    // Wipe all browser data first
+    wipeBrowserData();
+    
     // Reset all local state
+    setIsSubmitted(false);
     setTotalBudget(0);
     setNotesLocal('');
     setAddressInput('');
     setSelectedMeetingDate(null);
     setSelectedMeetingTime(null);
     setSelectedStaffMember(null);
+    
     // Initialize fresh session (no caching)
     await initializeFreshSession();
+    
+    console.log('✅ New agent form ready');
   };
 
   const phoneDigits = state.personalInfo.phone.replace(/\D/g, '');
