@@ -15,6 +15,17 @@ import PreviousQuotes from '../PreviousQuotes';
 import CalendarWidget from '../CalendarWidget';
 import FileUpload from '../FileUpload';
 
+// Interface for form pages
+interface FormPage {
+  id: string;
+  title: string;
+  components: {
+    title: string;
+    component: React.ComponentType<any>;
+    key: string;
+  }[];
+}
+
 interface FollowUpFormProps {
   sessionId?: string;
 }
@@ -37,18 +48,62 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
   // Check if user has photos uploaded
   const hasPhotos = state.personalInfo.uploadedImages.length > 0;
 
-  // Determine which services are selected - handle both IDs and display names
-  const hasMaintenanceServices = state.services.some(service => {
-    const maintenanceIds = ['lawn-maintenance', 'snow-management'];
-    const maintenanceNames = ['Routine Lawn Maintenance', 'Snow Management'];
-    return maintenanceIds.includes(service) || maintenanceNames.includes(service);
-  });
+  // Determine which services are selected - BULLETPROOF detection for Gravity Forms
+  const hasMaintenanceServices = useMemo(() => {
+    return state.services.some(service => {
+      // Handle both service IDs and display names from Gravity Forms
+      const maintenanceIds = ['lawn-maintenance', 'snow-management', 'garden-maintenance', 'irrigation-maintenance'];
+      const maintenanceNames = [
+        'Lawn Maintenance Program', 
+        'Routine Lawn Maintenance', 
+        'Lawn Maintenance',
+        'Snow & Ice Management', 
+        'Snow Management',
+        'Garden & Bed Maintenance',
+        'Irrigation Maintenance'
+      ];
+      
+      // Also check for partial matches (case-insensitive)
+      const serviceLower = service.toLowerCase();
+      const maintenanceKeywords = ['maintenance', 'snow', 'ice', 'garden', 'bed'];
+      
+      return maintenanceIds.includes(service) || 
+             maintenanceNames.includes(service) ||
+             maintenanceKeywords.some(keyword => serviceLower.includes(keyword));
+    });
+  }, [state.services]);
   
-  const hasProjectServices = state.services.some(service => {
-    const projectIds = ['landscape-design-build', 'landscape-enhancement'];
-    const projectNames = ['Landscape Design & Build', 'Landscape Enhancement'];
-    return projectIds.includes(service) || projectNames.includes(service);
-  });
+  const hasProjectServices = useMemo(() => {
+    return state.services.some(service => {
+      // Handle both service IDs and display names from Gravity Forms
+      const projectIds = [
+        'landscape-design-build', 
+        'landscape-enhancement', 
+        'lawn-renovation', 
+        'outdoor-lighting', 
+        'irrigation-install'
+      ];
+      const projectNames = [
+        'Landscape Design & Build',
+        'Landscape Enhancement', 
+        'Lawn Renovation & Installation',
+        'Outdoor Lighting',
+        'Irrigation System Installation'
+      ];
+      
+      // Also check for partial matches (case-insensitive)
+      const serviceLower = service.toLowerCase();
+      const projectKeywords = [
+        'design', 'build', 'enhancement', 'renovation', 'lighting', 
+        'irrigation', 'install', 'landscape', 'outdoor', 'patio', 
+        'walkway', 'retaining', 'kitchen', 'fire', 'water', 'pergola'
+      ];
+      
+      return projectIds.includes(service) || 
+             projectNames.includes(service) ||
+             projectKeywords.some(keyword => serviceLower.includes(keyword));
+    });
+  }, [state.services]);
 
   // Photo Upload Component
   const PhotoUploadComponent: React.FC<{ onValidationChange: (isValid: boolean) => void }> = ({ onValidationChange }) => {
@@ -111,47 +166,46 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
     );
   };
 
-  // Memoize pages to prevent infinite re-renders
+  // Generate pages based on services - with fallback for safety
   const pages = useMemo(() => {
-    const pageList = [];
+    const pageList: FormPage[] = [];
+    
+    console.log('Generating pages...', { 
+      hasMaintenanceServices, 
+      hasProjectServices, 
+      servicesCount: state.services.length,
+      services: state.services 
+    });
 
-    // Add photo upload page if user doesn't have photos
-    if (!hasPhotos) {
+    // If we have maintenance services OR no services detected (fallback)
+    if (hasMaintenanceServices || (!hasMaintenanceServices && !hasProjectServices && state.services.length === 0)) {
       pageList.push({
-        id: 'photo-upload',
-        title: 'Property Photos',
+        id: 'previous-provider',
+        title: 'Previous Provider',
         components: [
           {
-            title: 'Upload Photos',
-            component: PhotoUploadComponent,
-            key: 'photoUpload'
+            title: 'Previous Provider Information',
+            component: PreviousProvider,
+            key: 'previousProvider'
           }
         ]
       });
     }
 
-    // Add maintenance details page if maintenance services are selected
-    if (hasMaintenanceServices) {
+    // If we have project services OR no services detected (fallback)
+    if (hasProjectServices || (!hasMaintenanceServices && !hasProjectServices && state.services.length === 0)) {
       pageList.push({
-        id: 'maintenance-details',
-        title: 'Maintenance Details',
+        id: 'project-scope',
+        title: 'Project Scope',
         components: [
           {
-            title: 'Previous Provider',
-            component: PreviousProvider,
-            key: 'previousProvider'
-          },
-          {
-            title: 'Service Preference',
+            title: 'Price vs Long Term',
             component: PriceVsLongTerm,
             key: 'priceVsLongTerm'
           }
         ]
       });
-    }
 
-    // Add project details page if project services are selected
-    if (hasProjectServices) {
       pageList.push({
         id: 'project-details',
         title: 'Project Details',
@@ -170,7 +224,7 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
       });
     }
 
-    // Always add booking page
+    // Always add booking page - this is essential
     pageList.push({
       id: 'booking',
       title: 'Schedule Consultation',
@@ -186,9 +240,9 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
     console.log('Pages generated:', pageList.map(p => p.id));
 
     return pageList;
-  }, [hasMaintenanceServices, hasProjectServices, hasPhotos]);
+  }, [hasMaintenanceServices, hasProjectServices, hasPhotos, state.services]);
 
-  // If no relevant services are selected, redirect to home
+  // Validate services and provide helpful feedback - NO REDIRECTS
   useEffect(() => {
     console.log('🔍 FollowUpForm: Checking services...', {
       services: state.services,
@@ -196,14 +250,16 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
       hasProjectServices
     });
     
-    if (!hasMaintenanceServices && !hasProjectServices && state.services.length > 0) {
-      console.error('❌ FollowUpForm: No valid services found, redirecting to home');
-      console.log('Services in state:', state.services);
-      navigate('/');
+    // Only show error if we have services but none are valid
+    if (state.services.length > 0 && !hasMaintenanceServices && !hasProjectServices) {
+      console.warn('⚠️ FollowUpForm: Services detected but none are recognized:', state.services);
+      // Don't redirect - just log for debugging
+    } else if (hasMaintenanceServices || hasProjectServices) {
+      console.log('✅ FollowUpForm: Valid services found, proceeding with form');
     } else {
-      console.log('✅ FollowUpForm: Valid services found or no services loaded yet, proceeding with form');
+      console.log('🔄 FollowUpForm: No services loaded yet or empty services array');
     }
-  }, [hasMaintenanceServices, hasProjectServices, navigate, state.services]);
+  }, [hasMaintenanceServices, hasProjectServices, state.services]);
 
   const handleValidationChange = (pageIndex: number, componentKey: string, isValid: boolean) => {
     setValidationStates(prev => ({
@@ -331,11 +387,11 @@ const FollowUpForm: React.FC<FollowUpFormProps> = ({ sessionId }) => {
               )}
 
               <Button
-                onClick={() => navigate('/')}
+                onClick={() => window.location.href = 'https://villandscaping.ca'}
                 variant="outline"
                 className="mt-4"
               >
-                Return to Home
+                Visit Our Website
               </Button>
             </CardContent>
           </Card>

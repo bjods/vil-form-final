@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, useParams } from 'react-router-
 import { useFormStore } from './store/formStore';
 
 // Import form components
-import InitialForm from './components/forms/InitialForm';
 import AgentForm from './components/forms/AgentForm';
 import FollowUpForm from './components/forms/FollowUpForm';
 import UploadPage from './components/UploadPage';
@@ -103,8 +102,6 @@ const SessionLoader: React.FC<SessionLoaderProps> = ({ children }) => {
   return <>{children}</>;
 };
 
-
-
 const AppRoutes: React.FC = () => {
   // Check if we're in embed mode
   const isEmbedMode = !(document.getElementById('root'));
@@ -112,17 +109,33 @@ const AppRoutes: React.FC = () => {
   const routerContent = (
     <Router>
       <Routes>
-        {/* Initial Form - Homepage */}
+        {/* Home Page - Redirect to main website */}
         <Route 
           path="/" 
           element={
-            <SessionLoader>
-              <InitialForm />
-            </SessionLoader>
+            <div className="flex items-center justify-center min-h-screen p-4">
+              <div className="text-center max-w-md">
+                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Form Access</h1>
+                <p className="text-gray-600 mb-4">
+                  This form is accessed through direct links only. Please visit our main website to get started.
+                </p>
+                <button 
+                  onClick={() => window.location.href = 'https://villandscaping.ca'}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded-md font-medium"
+                >
+                  Visit VIL Landscaping
+                </button>
+              </div>
+            </div>
           } 
         />
         
-        {/* Follow-up Form - Detailed form using existing components */}
+        {/* Follow-up Form - Now the main customer form */}
         <Route 
           path="/follow-up/:sessionId" 
           element={
@@ -193,10 +206,10 @@ const AppRoutes: React.FC = () => {
                     Clear Local Storage
                   </button>
                   <button 
-                    onClick={() => window.location.href = '/'}
+                    onClick={() => window.location.href = 'https://villandscaping.ca'}
                     className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md"
                   >
-                    Go to Home
+                    Go to Main Website
                   </button>
                 </div>
               </div>
@@ -204,13 +217,27 @@ const AppRoutes: React.FC = () => {
           } 
         />
         
-        {/* Fallback to home page for any other routes */}
+        {/* Fallback - Redirect to main website */}
         <Route 
           path="*" 
           element={
-            <SessionLoader>
-              <InitialForm />
-            </SessionLoader>
+            <div className="flex items-center justify-center min-h-screen p-4">
+              <div className="text-center max-w-md">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h1 className="text-xl font-bold text-gray-900 mb-2">Page Not Found</h1>
+                <p className="text-gray-600 mb-4">The page you're looking for doesn't exist.</p>
+                <button 
+                  onClick={() => window.location.href = 'https://villandscaping.ca'}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded-md font-medium"
+                >
+                  Visit VIL Landscaping
+                </button>
+              </div>
+            </div>
           } 
         />
       </Routes>
