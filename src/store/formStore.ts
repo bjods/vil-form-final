@@ -459,8 +459,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
   submitAgentForm: async () => {
     const { state } = get();
     
-    console.log('🚀 Starting agent form submission...');
-    console.log('📊 Current form state:', state);
+    console.log('🚀 Starting agent form submission via edge function...');
     
     // Prevent multiple submissions
     if (state.isSubmitting) {
@@ -478,7 +477,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
     }));
     
     try {
-      // Validate required fields
+      // Validate required fields client-side
       const errors: string[] = [];
       if (!state.personalInfo.firstName?.trim()) errors.push('First name is required');
       if (!state.personalInfo.email?.trim()) errors.push('Email is required');
@@ -493,134 +492,45 @@ export const useFormStore = create<FormStore>((set, get) => ({
         throw new Error('No session ID available');
       }
       
-      console.log('✅ Validation passed, updating database...');
+      console.log('✅ Client validation passed, sending to edge function...');
       
-      // Calculate total budget
-      const totalBudget = Object.values(state.budgets).reduce((sum, budget) => sum + (budget || 0), 0);
-      
-      // Prepare complete database update payload
-      const dbPayload = {
-        // Personal information
-        first_name: state.personalInfo.firstName.trim(),
-        last_name: state.personalInfo.lastName?.trim() || null,
-        email: state.personalInfo.email.trim().toLowerCase(),
-        phone: state.personalInfo.phone.trim(),
-        address: state.address.trim(),
-        postal_code: state.postalCode?.trim() || null,
-        
-        // Form metadata
-        form_source: 'agent',
-        form_type: 'agent',
-        inside_service_area: true, // Agent forms assume inside service area
-        
-        // Services and details
-        services: state.services.length > 0 ? state.services : [],
-        budgets: Object.keys(state.budgets).length > 0 ? state.budgets : {},
-        notes: state.notes?.trim() || null,
-        referral_source: state.personalInfo.referralSource?.trim() || null,
-        
-        // Meeting details (if scheduled)
-        meeting_scheduled: Boolean(state.meetingScheduled && state.meetingStaffMember && state.meetingDate),
-        meeting_provider: state.meetingStaffMember?.trim() || null,
-        meeting_date: state.meetingDate || null,
-        meeting_start_time: state.meetingStartTime || null,
-        meeting_end_time: state.meetingEndTime || null,
-        
-        // Form completion status
-        initial_form_completed: true,
-        zapier_webhook_sent: false, // Will be updated after webhook succeeds
-        
-        // Timestamps
-        updated_at: new Date().toISOString()
-      };
-      
-      console.log('📝 Database payload:', dbPayload);
-      
-      // Update database
-      const { data: updatedSession, error: dbError } = await supabase
-        .from('form_sessions')
-        .update(dbPayload)
-        .eq('id', state.sessionId)
-        .select()
-        .single();
-        
-      if (dbError) {
-        console.error('❌ Database update failed:', dbError);
-        throw new Error(`Database update failed: ${dbError.message}`);
+      // Send all form data to edge function
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-agent-form`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          session_id: state.sessionId,
+          form_data: {
+            personalInfo: state.personalInfo,
+            address: state.address,
+            postalCode: state.postalCode,
+            services: state.services,
+            budgets: state.budgets,
+            notes: state.notes,
+            meetingScheduled: state.meetingScheduled,
+            meetingStaffMember: state.meetingStaffMember,
+            meetingDate: state.meetingDate,
+            meetingStartTime: state.meetingStartTime,
+            meetingEndTime: state.meetingEndTime
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Server error: ${response.status}`);
       }
-      
-      console.log('✅ Database updated successfully:', updatedSession);
-      
-      // Prepare Zapier webhook payload
-      const zapierPayload = {
-        // Session info
-        session_id: state.sessionId,
-        form_source: 'agent',
-        submitted_at: new Date().toISOString(),
-        
-        // Personal information
-        first_name: state.personalInfo.firstName.trim(),
-        last_name: state.personalInfo.lastName?.trim() || '',
-        email: state.personalInfo.email.trim().toLowerCase(),
-        phone: state.personalInfo.phone.trim(),
-        address: state.address.trim(),
-        postal_code: state.postalCode?.trim() || '',
-        referral_source: state.personalInfo.referralSource?.trim() || '',
-        
-        // Services and budget
-        services: state.services,
-        services_text: state.services.length > 0 ? state.services.join(', ') : 'No services selected',
-        budgets: state.budgets,
-        total_budget: totalBudget,
-        notes: state.notes?.trim() || '',
-        
-        // Meeting details
-        meeting_scheduled: Boolean(state.meetingScheduled && state.meetingStaffMember && state.meetingDate),
-        meeting_provider: state.meetingStaffMember?.trim() || '',
-        meeting_date: state.meetingDate || '',
-        meeting_start_time: state.meetingStartTime || '',
-        meeting_end_time: state.meetingEndTime || '',
-        
-        // Additional context
-        inside_service_area: true,
-        form_completed: true
-      };
-      
-      console.log('🔗 Sending to Zapier webhook:', zapierPayload);
-      
-      // Send to Zapier webhook
-      try {
-        const zapierResponse = await fetch('https://hooks.zapier.com/hooks/catch/17773320/uy0it3o/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(zapierPayload),
-        });
-        
-        if (zapierResponse.ok) {
-          console.log('✅ Zapier webhook sent successfully');
-          
-          // Update webhook sent status
-          await supabase
-            .from('form_sessions')
-            .update({
-              zapier_webhook_sent: true,
-              zapier_webhook_sent_at: new Date().toISOString()
-            })
-            .eq('id', state.sessionId);
-            
-        } else {
-          console.error('⚠️ Zapier webhook failed:', zapierResponse.status, zapierResponse.statusText);
-          // Don't fail the entire submission if webhook fails
-        }
-      } catch (zapierError) {
-        console.error('⚠️ Zapier webhook error:', zapierError);
-        // Don't fail the entire submission if webhook fails
-      }
-      
+
+      const responseData = await response.json();
+      console.log('✅ Edge function response:', responseData);
+
       // Create WhatConverts tracking event
       try {
+        const totalBudget = Object.values(state.budgets).reduce((sum, budget) => sum + (budget || 0), 0);
+        
         const trackingData = {
           formId: 'vl-agent-form',
           sessionId: state.sessionId,
