@@ -55,6 +55,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   // Google Maps autocomplete refs
   const addressInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
 
   // Initialize fresh session on mount (no caching)
   useEffect(() => {
@@ -62,17 +63,50 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     initializeFreshSession();
   }, []); // Empty dependency array - only run once on mount
 
-  // Update notes in store when local notes change
+  // Load Google Maps API
   useEffect(() => {
-    if (setNotes) {
-      setNotes(notes);
-    }
-  }, [notes, setNotes]);
+    const loadGoogleMapsAPI = () => {
+      // Check if Google Maps is already loaded
+      if (window.google && window.google.maps && window.google.maps.places) {
+        setIsGoogleMapsLoaded(true);
+        return;
+      }
 
-  // Initialize Google Maps autocomplete
+      // Check if script is already being loaded
+      if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+        // Wait for it to load
+        const checkLoaded = setInterval(() => {
+          if (window.google && window.google.maps && window.google.maps.places) {
+            setIsGoogleMapsLoaded(true);
+            clearInterval(checkLoaded);
+          }
+        }, 100);
+        return;
+      }
+
+      // Load the Google Maps API script
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        console.log('✅ Google Maps API loaded');
+        setIsGoogleMapsLoaded(true);
+      };
+      script.onerror = () => {
+        console.error('❌ Failed to load Google Maps API');
+      };
+      document.head.appendChild(script);
+    };
+
+    loadGoogleMapsAPI();
+  }, []);
+
+  // Initialize Google Maps autocomplete when API is loaded
   useEffect(() => {
-    if (window.google && window.google.maps && window.google.maps.places && addressInputRef.current) {
+    if (isGoogleMapsLoaded && addressInputRef.current && !autocompleteRef.current) {
       try {
+        console.log('🗺️ Initializing Google Maps autocomplete...');
         autocompleteRef.current = new window.google.maps.places.Autocomplete(addressInputRef.current, {
           types: ['address'],
           componentRestrictions: { country: 'ca' }, // Restrict to Canada
@@ -83,26 +117,38 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
         if (autocomplete) {
           autocomplete.addListener('place_changed', () => {
             const place = autocomplete.getPlace();
-          if (place && place.formatted_address) {
-            const address = place.formatted_address;
-            setAddressInput(address);
-            setAddress(address, '', true); // Assume service area is valid for agent form
+            console.log('📍 Place selected:', place);
             
-            // Extract postal code if available
-            const postalCodeComponent = place.address_components?.find(
-              component => component.types.includes('postal_code')
-            );
-            if (postalCodeComponent) {
-              // You could set postal code here if needed
+            if (place && place.formatted_address) {
+              const address = place.formatted_address;
+              setAddressInput(address);
+              setAddress(address, '', true); // Assume service area is valid for agent form
+              
+              // Extract postal code if available
+              const postalCodeComponent = place.address_components?.find(
+                (component: any) => component.types.includes('postal_code')
+              );
+              if (postalCodeComponent) {
+                console.log('📮 Postal code found:', postalCodeComponent.long_name);
+                // You could set postal code here if needed
+              }
             }
-          }
-        });
+          });
+          
+          console.log('✅ Google Maps autocomplete initialized');
         }
       } catch (error) {
-        console.error('Error initializing Google Maps autocomplete:', error);
+        console.error('❌ Error initializing Google Maps autocomplete:', error);
       }
     }
-  }, [setAddress]);
+  }, [isGoogleMapsLoaded, setAddress]);
+
+  // Update notes in store when local notes change
+  useEffect(() => {
+    if (setNotes) {
+      setNotes(notes);
+    }
+  }, [notes, setNotes]);
 
   // Email validation
   const validateEmail = (email: string) => {
@@ -243,13 +289,6 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
-      {/* Google Maps API Script */}
-      <script
-        src={`https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`}
-        async
-        defer
-      />
-      
       {/* Header */}
       <Card>
         <CardHeader>
@@ -337,9 +376,15 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
               id="address"
               value={addressInput}
               onChange={handleAddressInputChange}
-              placeholder="Start typing your address..."
+              placeholder={isGoogleMapsLoaded ? "Start typing your address..." : "Loading address autocomplete..."}
+              disabled={!isGoogleMapsLoaded}
               required
             />
+            {isGoogleMapsLoaded && (
+              <p className="text-xs text-green-600 mt-1">
+                ✅ Address autocomplete ready
+              </p>
+            )}
           </div>
           
           <div>
