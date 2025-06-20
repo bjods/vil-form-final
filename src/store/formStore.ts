@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 interface FormStore {
   state: FormState;
   initializeSession: (specificSessionId?: string) => Promise<void>;
+  initializeFreshSession: () => void;
   setStep: (step: number) => void;
   setSubStep: (subStep: number) => void;
   setServices: (services: string[]) => void;
@@ -71,7 +72,8 @@ const initialState: FormState = {
   isSubmitting: false,
   submissionError: null,
   errors: {},
-  touched: {}
+  touched: {},
+  isAgentForm: false
 };
 
 // Helper function to convert FormState to Supabase format
@@ -149,9 +151,15 @@ const convertFromSupabaseFormat = (session: FormSession): FormState => ({
   touched: {}
 });
 
-// Auto-save function with debouncing
+// Auto-save function with debouncing (disabled for agent forms)
 let saveTimeout: NodeJS.Timeout | null = null;
 const autoSave = async (sessionId: string, state: FormState) => {
+  // Skip auto-save for agent forms
+  if (state.isAgentForm) {
+    console.log('🚫 Auto-save skipped for agent form');
+    return;
+  }
+  
   if (saveTimeout) {
     clearTimeout(saveTimeout);
   }
@@ -242,6 +250,22 @@ export const useFormStore = create<FormStore>((set, get) => ({
         } 
       });
     }
+  },
+
+  initializeFreshSession: () => {
+    const newSessionId = generateSessionId();
+    const newState = {
+      ...initialState,
+      sessionId: newSessionId,
+      isSubmitting: false,
+      submissionError: null,
+      isAgentForm: true // Mark as agent form to disable caching
+    };
+    
+    // Clear any cached session data
+    localStorage.removeItem('currentSessionId');
+    console.log('🆕 Fresh agent form session created:', newSessionId);
+    set({ state: newState });
   },
 
   setStep: (step) => {
@@ -748,16 +772,9 @@ export const useFormStore = create<FormStore>((set, get) => ({
   },
 
   resetForm: () => {
-    const newSessionId = generateSessionId();
-    const newState = {
-      ...initialState,
-      sessionId: newSessionId,
-      isSubmitting: false,
-      submissionError: null
-    };
-    
+    // Clear localStorage and reset to initial state
     localStorage.removeItem('currentSessionId');
-    set({ state: newState });
+    set({ state: initialState });
   },
 
   clearErrors: () => {

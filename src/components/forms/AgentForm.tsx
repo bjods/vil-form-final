@@ -43,11 +43,11 @@ interface AgentFormProps {
 }
 
 const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
-  const { state, setPersonalInfo, setServices, setBudget, setNotes, setAddress, setMeetingDetails, submitAgentForm, initializeSession } = useFormStore();
+  const { state, setPersonalInfo, setServices, setBudget, setNotes, setAddress, setMeetingDetails, submitAgentForm, initializeFreshSession } = useFormStore();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [totalBudget, setTotalBudget] = useState<number>(0);
   const [notes, setNotesLocal] = useState('');
-  const [addressInput, setAddressInput] = useState(state.address || '');
+  const [addressInput, setAddressInput] = useState('');
   const [selectedMeetingDate, setSelectedMeetingDate] = useState<string | null>(null);
   const [selectedMeetingTime, setSelectedMeetingTime] = useState<string | null>(null);
   const [selectedStaffMember, setSelectedStaffMember] = useState<string | null>(null);
@@ -56,26 +56,11 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   const addressInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
-  // Initialize session on mount
+  // Initialize fresh session on mount (no caching)
   useEffect(() => {
-    const init = async () => {
-      try {
-        if (sessionId) {
-          await initializeSession(sessionId);
-        } else {
-          await initializeSession();
-        }
-      } catch (error) {
-        console.error('Failed to initialize session:', error);
-      }
-    };
-    init();
-  }, [sessionId]);
-
-  // Sync address input with store
-  useEffect(() => {
-    setAddressInput(state.address || '');
-  }, [state.address]);
+    console.log('🆕 Initializing fresh agent form session (no caching)');
+    initializeFreshSession();
+  }, []); // Empty dependency array - only run once on mount
 
   // Update notes in store when local notes change
   useEffect(() => {
@@ -211,8 +196,15 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
 
   const handleStartNew = () => {
     setIsSubmitted(false);
-    // Reset form state
-    window.location.reload();
+    // Reset all local state
+    setTotalBudget(0);
+    setNotesLocal('');
+    setAddressInput('');
+    setSelectedMeetingDate(null);
+    setSelectedMeetingTime(null);
+    setSelectedStaffMember(null);
+    // Initialize fresh session (no caching)
+    initializeFreshSession();
   };
 
   const phoneDigits = state.personalInfo.phone.replace(/\D/g, '');

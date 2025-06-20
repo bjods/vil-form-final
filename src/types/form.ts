@@ -92,6 +92,7 @@ export interface FormState {
   submissionError: string | null;
   errors: Record<string, string>;
   touched: Record<string, boolean>;
+  isAgentForm?: boolean;
 }
 
 export interface FormSubmissionPayload {
