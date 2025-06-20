@@ -460,6 +460,13 @@ export const useFormStore = create<FormStore>((set, get) => ({
     const { state } = get();
     
     console.log('🚀 Starting agent form submission via edge function...');
+    console.log('📅 Meeting data from form store:', {
+      meetingScheduled: state.meetingScheduled,
+      meetingStaffMember: state.meetingStaffMember,
+      meetingDate: state.meetingDate,
+      meetingStartTime: state.meetingStartTime,
+      meetingEndTime: state.meetingEndTime
+    });
     
     // Prevent multiple submissions
     if (state.isSubmitting) {
@@ -494,7 +501,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
       
       console.log('✅ Client validation passed, sending to edge function...');
       
-      // Send all form data to edge function
+      // Send all form data to edge function (meeting data is already in state)
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-agent-form`, {
         method: 'POST',
         headers: {

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { ChevronLeft, ChevronRight, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useFormStore } from '../store/formStore';
 
 interface TimeSlot {
   time: string;
@@ -9,20 +10,16 @@ interface TimeSlot {
 }
 
 interface AgentCalendarWidgetProps {
-  onSelectionChange?: (date: string | null, time: string | null, staffMember?: string | null) => void;
-  selectedDate?: string | null;
-  selectedTime?: string | null;
+  // No props needed - uses form store directly
 }
 
-export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = ({ 
-  onSelectionChange,
-  selectedDate: externalSelectedDate,
-  selectedTime: externalSelectedTime
-}) => {
+export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
+  const { state, setMeetingDetails } = useFormStore();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<string | null>(externalSelectedDate || null);
-  const [selectedTime, setSelectedTime] = useState<string | null>(externalSelectedTime || null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   
   // Cache availability data for the entire month
   const [monthAvailability, setMonthAvailability] = useState<{ [date: string]: TimeSlot[] }>({});
@@ -88,7 +85,7 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = ({
         return;
       }
       
-      console.log(`Fetching availability for ${bookableDates.length} dates in batch`);
+      console.log(`🗓️ Agent Calendar: Fetching availability for ${bookableDates.length} dates in batch`);
       
       // Use batch API to fetch all dates at once
       const response = await fetch(`${getApiUrl('check-availability')}?dates=${bookableDates.join(',')}`, {
@@ -106,10 +103,10 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = ({
       // Update state with all availability data
       setMonthAvailability(data.dates || {});
       
-      console.log(`Loaded availability for ${Object.keys(data.dates || {}).length} dates (${data.cached_count || 0} cached, ${data.fresh_count || 0} fresh)`);
+      console.log(`🗓️ Agent Calendar: Loaded availability for ${Object.keys(data.dates || {}).length} dates`);
       
     } catch (err) {
-      console.error('Error fetching month availability:', err);
+      console.error('❌ Agent Calendar: Error fetching month availability:', err);
       setError('Failed to load calendar availability');
       setMonthAvailability({});
     } finally {
@@ -124,25 +121,45 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = ({
     const dateString = date.toISOString().split('T')[0];
     setSelectedDate(dateString);
     setSelectedTime(null);
+    setSuccess(false);
     
-    // Notify parent component of selection change
-    if (onSelectionChange) {
-      onSelectionChange(dateString, null, null);
-    }
+    console.log(`🗓️ Agent Calendar: Date selected: ${dateString}`);
+    
+    // Clear meeting details when date changes
+    setMeetingDetails('', '', '', '');
   };
 
-  // Handle time selection
+  // Handle time selection and IMMEDIATELY save to form store
   const handleTimeSelect = (time: string) => {
+    if (!selectedDate) return;
+    
     setSelectedTime(time);
     
     // Find the staff member for this time slot
     const timeSlot = availableSlots.find(slot => slot.time === time);
-    const staffMember = timeSlot?.staff_member || null;
+    const staffMember = timeSlot?.staff_member || 'dom'; // Default to 'dom'
     
-    // Notify parent component of selection change
-    if (onSelectionChange) {
-      onSelectionChange(selectedDate, time, staffMember);
-    }
+    // Calculate end time (15 minutes after start time)
+    const calculateEndTime = (startTime: string): string => {
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const date = new Date();
+      date.setHours(hours, minutes);
+      date.setMinutes(date.getMinutes() + 15);
+      return date.toTimeString().slice(0, 5);
+    };
+    
+    const endTime = calculateEndTime(time);
+    
+    console.log(`🗓️ Agent Calendar: Time selected: ${time}, Staff: ${staffMember}, End: ${endTime}`);
+    console.log(`🗓️ Agent Calendar: Saving meeting details to form store...`);
+    
+    // DIRECTLY save to form store like the working CalendarWidget does
+    setMeetingDetails(staffMember, selectedDate, time, endTime);
+    
+    setSuccess(true);
+    
+    console.log(`✅ Agent Calendar: Meeting details saved successfully!`);
+    console.log(`📅 Meeting scheduled: ${selectedDate} at ${time} with ${staffMember}`);
   };
 
   // Navigate months
@@ -154,13 +171,12 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = ({
     });
     setSelectedDate(null);
     setSelectedTime(null);
+    setSuccess(false);
     // Clear cached data when changing months
     setMonthAvailability({});
     
-    // Notify parent of cleared selection
-    if (onSelectionChange) {
-      onSelectionChange(null, null, null);
-    }
+    // Clear meeting details when navigating
+    setMeetingDetails('', '', '', '');
   };
 
   const calendarDays = generateCalendarDays();
@@ -170,12 +186,6 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = ({
   useEffect(() => {
     fetchMonthAvailability();
   }, [currentDate]);
-
-  // Update local state when external props change
-  useEffect(() => {
-    setSelectedDate(externalSelectedDate || null);
-    setSelectedTime(externalSelectedTime || null);
-  }, [externalSelectedDate, externalSelectedTime]);
 
   // Get available slots for selected date from cached data
   const availableSlots = selectedDate ? (monthAvailability[selectedDate] || []) : [];
@@ -196,132 +206,124 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = ({
             Loading calendar availability...
           </div>
         )}
+        {error && (
+          <div className="flex items-center gap-2 text-sm text-red-600">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Month Navigation */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigateMonth('prev')}
-            disabled={monthLoading}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h3 className="text-lg font-semibold">{monthYear}</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigateMonth('next')}
-            disabled={monthLoading}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-
         {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-1">
-          {/* Day headers */}
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
-              {day}
-            </div>
-          ))}
-          
-          {/* Calendar days */}
-          {calendarDays.map((day, index) => {
-            const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-            const isToday = day.toDateString() === new Date().toDateString();
-            const isBookable = isDateBookable(day);
-            const dateString = day.toISOString().split('T')[0];
-            const isSelected = selectedDate === dateString;
-            const hasAvailability = monthAvailability[dateString]?.length > 0;
+        <div className="space-y-4">
+          {/* Month Navigation */}
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigateMonth('prev')}
+              disabled={monthLoading}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h3 className="text-lg font-semibold">{monthYear}</h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigateMonth('next')}
+              disabled={monthLoading}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Calendar Days */}
+          <div className="grid grid-cols-7 gap-1">
+            {/* Day headers */}
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
+                {day}
+              </div>
+            ))}
             
-            return (
-              <button
-                key={index}
-                onClick={() => handleDateSelect(day)}
-                disabled={!isBookable || !isCurrentMonth || monthLoading}
-                className={`
-                  p-2 text-sm rounded-lg transition-colors relative
-                  ${!isCurrentMonth ? 'text-gray-300' : ''}
-                  ${isToday && !isSelected ? 'bg-yellow-600 text-white font-semibold' : ''}
-                  ${isSelected ? 'bg-black text-white font-semibold' : ''}
-                  ${hasAvailability && isCurrentMonth && !isSelected && !isToday ? 'bg-yellow-200 text-black hover:bg-yellow-300' : ''}
-                  ${isBookable && isCurrentMonth && !isSelected && !hasAvailability && !isToday ? 'hover:bg-gray-100' : ''}
-                  ${!isBookable || !isCurrentMonth || monthLoading ? 'cursor-not-allowed' : 'cursor-pointer'}
-                  ${monthLoading ? 'opacity-50' : ''}
-                `}
-              >
-                {day.getDate()}
-                {hasAvailability && isCurrentMonth && (
-                  <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
-                )}
-              </button>
-            );
-          })}
+            {/* Calendar days */}
+            {calendarDays.map((date, index) => {
+              const dateString = date.toISOString().split('T')[0];
+              const isCurrentMonth = date.getMonth() === currentDate.getMonth();
+              const isBookable = isDateBookable(date);
+              const isSelected = selectedDate === dateString;
+              const hasAvailability = monthAvailability[dateString]?.length > 0;
+              
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleDateSelect(date)}
+                  disabled={!isBookable || !hasAvailability || monthLoading}
+                  className={`
+                    p-2 text-sm border rounded transition-colors
+                    ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
+                    ${isSelected ? 'bg-yellow-100 border-yellow-400 text-yellow-800' : ''}
+                    ${isBookable && hasAvailability && !isSelected ? 'hover:bg-gray-100 border-gray-200' : ''}
+                    ${!isBookable || !hasAvailability ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                >
+                  {date.getDate()}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Time Slots */}
+        {/* Time Selection */}
         {selectedDate && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
               <h4 className="font-medium">
-                Available times for {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric'
+                Available Times for {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  month: 'long', 
+                  day: 'numeric' 
                 })}
               </h4>
             </div>
             
             {availableSlots.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {availableSlots.map((slot) => (
                   <Button
                     key={slot.time}
                     variant={selectedTime === slot.time ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleTimeSelect(slot.time)}
-                    className={`text-xs ${
-                      selectedTime === slot.time 
-                        ? 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500' 
-                        : 'border-yellow-300 text-black hover:bg-yellow-50'
-                    }`}
+                    className={selectedTime === slot.time ? "bg-yellow-500 hover:bg-yellow-600" : ""}
                   >
                     {slot.time}
                   </Button>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-4">
-                <p className="text-sm text-gray-600">No available times for this date</p>
-              </div>
+              <p className="text-sm text-gray-500">No available times for this date</p>
             )}
           </div>
         )}
 
-        {/* Error Display */}
-        {error && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <p className="text-sm text-red-800">{error}</p>
-          </div>
-        )}
-
-        {/* Selection Summary - No booking button, just shows what's selected */}
-        {selectedDate && selectedTime && (
-          <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
-            <p className="text-sm text-yellow-800">
-              <strong>Selected:</strong> {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric'
+        {/* Success Message */}
+        {success && selectedDate && selectedTime && (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-2 text-green-800">
+              <CheckCircle2 className="h-4 w-4" />
+              <span className="font-medium">Meeting Time Selected</span>
+            </div>
+            <p className="text-sm text-green-700 mt-1">
+              {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                month: 'long', 
+                day: 'numeric' 
               })} at {selectedTime}
             </p>
-            <p className="text-xs text-yellow-700 mt-1">
-              Duration: 15 minutes • This will be saved when you submit the lead
+            <p className="text-xs text-green-600 mt-1">
+              This meeting will be saved when you submit the lead.
             </p>
           </div>
         )}

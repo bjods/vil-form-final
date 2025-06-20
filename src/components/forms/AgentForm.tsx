@@ -48,9 +48,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   const [totalBudget, setTotalBudget] = useState<number>(0);
   const [notes, setNotesLocal] = useState('');
   const [addressInput, setAddressInput] = useState('');
-  const [selectedMeetingDate, setSelectedMeetingDate] = useState<string | null>(null);
-  const [selectedMeetingTime, setSelectedMeetingTime] = useState<string | null>(null);
-  const [selectedStaffMember, setSelectedStaffMember] = useState<string | null>(null);
+  // Calendar selection is now handled directly by AgentCalendarWidget via form store
   
   // Google Maps autocomplete refs
   const addressInputRef = useRef<HTMLInputElement>(null);
@@ -205,31 +203,9 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     }
   };
 
-  const handleMeetingSelection = (date: string | null, time: string | null, staffMember?: string | null) => {
-    setSelectedMeetingDate(date);
-    setSelectedMeetingTime(time);
-    setSelectedStaffMember(staffMember || null);
-  };
-
   const handleSubmit = async () => {
     try {
-      // Save meeting details if selected
-      if (selectedMeetingDate && selectedMeetingTime && selectedStaffMember) {
-        // Calculate end time (15 minutes after start time)
-        const [hours, minutes] = selectedMeetingTime.split(':').map(Number);
-        const endDate = new Date();
-        endDate.setHours(hours, minutes + 15, 0, 0);
-        const endTime = endDate.toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit',
-          hour12: false 
-        });
-        
-        // Save meeting details to form store with the actual staff member name
-        // Use lowercase 'dom' or 'charlie' as these are the database values
-        setMeetingDetails(selectedStaffMember, selectedMeetingDate, selectedMeetingTime, endTime);
-      }
-      
+      // No need to pass calendar data - it's already in the form store
       const success = await submitAgentForm();
       if (success) {
         setIsSubmitted(true);
@@ -254,9 +230,6 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     setTotalBudget(0);
     setNotesLocal('');
     setAddressInput('');
-    setSelectedMeetingDate(null);
-    setSelectedMeetingTime(null);
-    setSelectedStaffMember(null);
     
     // Initialize fresh session (no caching)
     await initializeFreshSession();
@@ -511,23 +484,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <AgentCalendarWidget
-            onSelectionChange={handleMeetingSelection}
-            selectedDate={selectedMeetingDate}
-            selectedTime={selectedMeetingTime}
-          />
-          
-          {selectedMeetingDate && selectedMeetingTime && selectedStaffMember && (
-            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center gap-2 text-green-800">
-                <CheckCircle2 className="h-4 w-4" />
-                <span className="font-medium">Meeting Selected</span>
-              </div>
-              <p className="text-sm text-green-700 mt-1">
-                {selectedMeetingDate} at {selectedMeetingTime} with {selectedStaffMember === 'dom' ? 'Dom' : 'Charlie'}
-              </p>
-            </div>
-          )}
+          <AgentCalendarWidget />
         </CardContent>
       </Card>
 
