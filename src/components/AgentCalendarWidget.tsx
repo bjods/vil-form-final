@@ -7,6 +7,7 @@ import { useFormStore } from '../store/formStore';
 
 interface TimeSlot {
   time: string;
+  staff_member: string;
 }
 
 interface AgentCalendarWidgetProps {
@@ -133,6 +134,10 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
     
     setSelectedTime(time);
     
+    // Find the selected time slot to get the staff member
+    const selectedSlot = availableSlots.find(slot => slot.time === time);
+    const staffMember = selectedSlot?.staff_member || 'dom'; // Fallback to 'dom' if not found
+    
     // Calculate end time (15 minutes after start time)
     const calculateEndTime = (startTime: string): string => {
       const [hours, minutes] = startTime.split(':').map(Number);
@@ -144,9 +149,8 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
     
     const endTime = calculateEndTime(time);
     
-    // DIRECTLY save to form store like the working CalendarWidget does
-    // Default to 'Staff Member' since we don't have staff assignment for agent form
-    setMeetingDetails('Staff Member', selectedDate, time, endTime);
+    // DIRECTLY save to form store with the correct staff member from availability data
+    setMeetingDetails(staffMember, selectedDate, time, endTime);
     
     setSuccess(true);
   };
@@ -288,8 +292,13 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
                         ? 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500' 
                         : 'border-yellow-300 text-black hover:bg-yellow-50'
                     }`}
+                    title={`${slot.time} with ${slot.staff_member.charAt(0).toUpperCase() + slot.staff_member.slice(1)}`}
                   >
                     {slot.time}
+                    <br />
+                    <span className="text-xs opacity-75">
+                      {slot.staff_member.charAt(0).toUpperCase() + slot.staff_member.slice(1)}
+                    </span>
                   </Button>
                 ))}
               </div>
@@ -318,6 +327,10 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
                 month: 'long',
                 day: 'numeric'
               })} at {selectedTime}
+              {(() => {
+                const selectedSlot = availableSlots.find(slot => slot.time === selectedTime);
+                return selectedSlot ? ` with ${selectedSlot.staff_member.charAt(0).toUpperCase() + selectedSlot.staff_member.slice(1)}` : '';
+              })()}
             </p>
             <p className="text-xs text-yellow-700 mt-1">
               Duration: 15 minutes • This will be saved when you submit the lead
