@@ -48,14 +48,14 @@ interface AgentFormProps {
 }
 
 const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
-  const { state, setPersonalInfo, setServices, setBudget, setNotes, setAddress, setMeetingDetails, submitAgentForm, resetForm, setAutoSaveEnabled } = useFormStore();
+  const { state, setPersonalInfo, setServices, setBudget, setNotes, setAddress, setMeetingDetails, submitAgentForm, initializeSession } = useFormStore();
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [totalBudget, setTotalBudget] = useState<number>(0);
   const [notes, setNotesLocal] = useState('');
-  const [addressInput, setAddressInput] = useState('');
+  const [addressInput, setAddressInput] = useState(state.address || '');
   const [selectedMeetingDate, setSelectedMeetingDate] = useState<string | null>(null);
   const [selectedMeetingTime, setSelectedMeetingTime] = useState<string | null>(null);
   const [selectedStaffMember, setSelectedStaffMember] = useState<string | null>(null);
@@ -64,37 +64,26 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const scriptLoadingRef = useRef(false);
 
-  // Initialize fresh form on mount - NO data persistence for agent form
+  // Initialize session on mount
   useEffect(() => {
-    const initializeFreshForm = () => {
-      // Disable auto-save for agent form
-      setAutoSaveEnabled(false);
-      
-      // Always start with a fresh form for agent form
-      resetForm();
-      
-      // Clear any cached session data
-      localStorage.removeItem('currentSessionId');
-      
-      // Reset all local state
-      setAddressInput('');
-      setSelectedMeetingDate(null);
-      setSelectedMeetingTime(null);
-      setSelectedStaffMember(null);
-      setNotesLocal('');
-      setTotalBudget(0);
-      setIsSubmitted(false);
-      setSaveError(null);
-      setLastSaved(null);
+    const init = async () => {
+      try {
+        if (sessionId) {
+          await initializeSession(sessionId);
+        } else {
+          await initializeSession();
+        }
+      } catch (error) {
+        console.error('Failed to initialize session:', error);
+      }
     };
-    
-    initializeFreshForm();
-    
-    // Re-enable auto-save when component unmounts (for other forms)
-    return () => {
-      setAutoSaveEnabled(true);
-    };
-  }, []); // Only run on mount
+    init();
+  }, [sessionId]);
+
+  // Sync address input with store
+  useEffect(() => {
+    setAddressInput(state.address || '');
+  }, [state.address]);
 
   // Load Google Maps script and setup autocomplete
   const loadGoogleMapsScript = () => {
@@ -181,49 +170,88 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
       }
     }
     
-    // Only update form store on submission, not during input
-    // This prevents auto-save behavior
+    // Save to form store - assuming service area is valid for agent form
+    setAddress(fullAddress, extractedPostalCode, true);
   };
 
   const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setAddressInput(value);
-    // Don't save to form store until submission
+    // For manual input, save without postal code
+    setAddress(value, '', true);
   };
 
-  // Remove auto-save functionality for agent form
-  // No useEffect for auto-saving data
+  // Auto-save functionality with debouncing
+  useEffect(() => {
+    if (!state.sessionId) return;
 
+    const timeoutId = setTimeout(async () => {
+      try {
+    setIsSaving(true);
+        setSaveError(null);
+        
+        // Update the form store which will trigger auto-save
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        setLastSaved(new Date());
+      } catch (error) {
+        setSaveError('Failed to save');
+        console.error('Auto-save error:', error);
+      } finally {
+        setIsSaving(false);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, [state.personalInfo, state.services, totalBudget, notes, state.address, state.sessionId]);
+
+  // Update notes in store when local notes change
+  useEffect(() => {
+    if (setNotes) {
+      setNotes(notes);
+    }
+  }, [notes, setNotes]);
+
+  // Email validation (kept for display purposes but not required)
   const validateEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   };
 
+  // Format phone number
   const formatPhoneNumber = (value: string) => {
-    const cleaned = value.replace(/\D/g, '');
-    if (cleaned.length <= 3) return cleaned;
-    if (cleaned.length <= 6) return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
-    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+    const phoneNumber = value.replace(/\D/g, '');
+    if (phoneNumber.length <= 3) {
+      return phoneNumber;
+    } else if (phoneNumber.length <= 6) {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+    } else {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+    }
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhoneNumber(e.target.value);
-    setPersonalInfo({ phone: formatted });
+    const rawValue = e.target.value.replace(/\D/g, '');
+    if (rawValue.length <= 10) {
+      const formatted = formatPhoneNumber(rawValue);
+      setPersonalInfo({ phone: formatted });
+    }
   };
 
   const handleServiceToggle = (serviceId: string) => {
-    const currentServices = state.services.includes(serviceId)
+    const newServices = state.services.includes(serviceId)
       ? state.services.filter(id => id !== serviceId)
       : [...state.services, serviceId];
-    setServices(currentServices);
+    setServices(newServices);
   };
 
   const handleBudgetChange = (value: string) => {
-    const amount = parseFloat(value) || 0;
-    setTotalBudget(amount);
+    const budget = Number(value) || 0;
+    setTotalBudget(budget);
     
     // Set budget for all selected services
     state.services.forEach(serviceId => {
-      setBudget(serviceId, amount);
+      setBudget(serviceId, budget);
     });
   };
 
@@ -236,11 +264,6 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   const handleSubmit = async () => {
     try {
       setIsSaving(true);
-      
-      // Save address data to form store before submission
-      if (addressInput) {
-        setAddress(addressInput, '', true); // Assuming service area is valid for agent form
-      }
       
       // Save meeting details if selected
       if (selectedMeetingDate && selectedMeetingTime) {
@@ -263,11 +286,6 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
         setMeetingDetails(staffMemberName, selectedMeetingDate, selectedMeetingTime, endTime);
       }
       
-      // Set notes if any
-      if (notes) {
-        setNotes(notes);
-      }
-      
       await submitAgentForm();
       setIsSubmitted(true);
     } catch (error) {
@@ -279,25 +297,8 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   };
 
   const handleStartNew = () => {
-    // Clear all browser/cache data and start completely fresh
-    localStorage.clear();
-    sessionStorage.clear();
-    
-    // Reset form store
-    resetForm();
-    
-    // Reset all local state
     setIsSubmitted(false);
-    setAddressInput('');
-    setSelectedMeetingDate(null);
-    setSelectedMeetingTime(null);
-    setSelectedStaffMember(null);
-    setNotesLocal('');
-    setTotalBudget(0);
-    setSaveError(null);
-    setLastSaved(null);
-    
-    // Force a complete page reload to ensure no cached data
+    // Reset form state
     window.location.reload();
   };
 
@@ -351,10 +352,11 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
                 Fast lead capture for door-to-door and phone sales
               </CardDescription>
             </div>
-            {/* Remove auto-save indicator for agent form */}
-            <div className="text-sm text-gray-500">
-              No auto-save - data only saved on submission
-            </div>
+            <AutoSaveIndicator 
+              isSaving={isSaving}
+              lastSaved={lastSaved}
+              error={saveError}
+            />
           </div>
         </CardHeader>
       </Card>

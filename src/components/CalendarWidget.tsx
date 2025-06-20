@@ -7,7 +7,6 @@ import { useFormStore } from '../store/formStore';
 
 interface TimeSlot {
   time: string;
-  staff_member?: string;
 }
 
 interface CalendarWidgetProps {
@@ -133,9 +132,6 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
     setSelectedTime(time);
   };
 
-  // Get available slots for selected date from cached data
-  const availableSlots = selectedDate ? (monthAvailability[selectedDate] || []) : [];
-
   // Book the meeting
   const handleBookMeeting = async () => {
     if (!selectedDate || !selectedTime || !state.sessionId) {
@@ -167,19 +163,11 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
 
       const data = await response.json();
       
-      // Find the staff member for this time slot from our cached data
-      const timeSlot = availableSlots.find(slot => slot.time === selectedTime);
-      const rawStaffMember = timeSlot?.staff_member || data.data_sent?.meeting_details?.provider || 'Staff Member';
-      
-      // Map staff member names consistently with AgentCalendarWidget
-      const staffMemberName = rawStaffMember === 'dom' ? 'Dom' : 
-                             rawStaffMember === 'charlie' ? 'Charlie' : 
-                             rawStaffMember || 'Staff Member';
-      
+      // The response structure is flat, not nested under 'meeting'
       // Update local state with the meeting details from the response
       if (data.success && data.data_sent?.meeting_details) {
         setMeetingDetails(
-          staffMemberName,
+          data.data_sent.meeting_details.provider || 'Staff Member',
           data.data_sent.meeting_details.date || selectedDate,
           data.data_sent.meeting_details.start_time || selectedTime,
           data.data_sent.meeting_details.end_time || ''
@@ -187,7 +175,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
       } else {
         // Fallback if the response structure is different
         setMeetingDetails(
-          staffMemberName,
+          'Staff Member', // Default staff member
           selectedDate,
           selectedTime,
           '' // End time will be calculated
@@ -238,6 +226,9 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
   useEffect(() => {
     fetchMonthAvailability();
   }, [currentDate]);
+
+  // Get available slots for selected date from cached data
+  const availableSlots = selectedDate ? (monthAvailability[selectedDate] || []) : [];
 
   // If meeting is already scheduled, show confirmation
   if (state.meetingScheduled || success) {
@@ -349,35 +340,58 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
               >
                 {day.getDate()}
                 {hasAvailability && isCurrentMonth && (
-                  <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
                 )}
               </button>
             );
           })}
         </div>
 
-        {/* Time Selection */}
+        {/* Time Slots */}
         {selectedDate && (
           <div className="space-y-4">
-            <h4 className="font-medium">Available Times</h4>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              <h4 className="font-medium">
+                Available times for {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </h4>
+            </div>
+            
             {availableSlots.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {availableSlots.map((slot) => (
                   <Button
                     key={slot.time}
                     variant={selectedTime === slot.time ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleTimeSelect(slot.time)}
-                    className="flex items-center gap-2"
+                    className={`text-xs ${
+                      selectedTime === slot.time 
+                        ? 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500' 
+                        : 'border-yellow-300 text-black hover:bg-yellow-50'
+                    }`}
                   >
-                    <Clock className="h-3 w-3" />
                     {slot.time}
                   </Button>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">No available times for this date</p>
+              <div className="text-center py-4">
+                <p className="text-sm text-gray-600">No available times for this date</p>
+              </div>
             )}
+          </div>
+        )}
+
+        {/* Error Display */}
+        {error && (
+          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <p className="text-sm text-red-800">{error}</p>
           </div>
         )}
 
@@ -386,35 +400,36 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
           <div className="space-y-4">
             <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
               <p className="text-sm text-yellow-800">
-                You're about to book a discovery call for:
-              </p>
-              <p className="font-semibold text-black mt-1">
-                {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
+                <strong>Selected:</strong> {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
                   weekday: 'long',
-                  year: 'numeric',
                   month: 'long',
                   day: 'numeric'
                 })} at {selectedTime}
+              </p>
+              <p className="text-xs text-yellow-700 mt-1">
+                Duration: 15 minutes
               </p>
             </div>
             
             <Button
               onClick={handleBookMeeting}
               disabled={booking}
-              className="w-full bg-black text-white hover:bg-gray-800"
+              className="w-full bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500"
+              size="lg"
             >
-              {booking ? 'Booking...' : 'Book Discovery Call'}
+              {booking ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
+                  Booking Meeting...
+                </>
+              ) : (
+                'Book Discovery Call'
+              )}
             </Button>
           </div>
         )}
 
-        {/* Error Display */}
-        {error && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-300 rounded-lg">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <p className="text-sm text-red-800">{error}</p>
-          </div>
-        )}
+
       </CardContent>
     </Card>
   );
