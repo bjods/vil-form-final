@@ -133,6 +133,9 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
     setSelectedTime(time);
   };
 
+  // Get available slots for selected date from cached data
+  const availableSlots = selectedDate ? (monthAvailability[selectedDate] || []) : [];
+
   // Book the meeting
   const handleBookMeeting = async () => {
     if (!selectedDate || !selectedTime || !state.sessionId) {
@@ -235,9 +238,6 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
   useEffect(() => {
     fetchMonthAvailability();
   }, [currentDate]);
-
-  // Get available slots for selected date from cached data
-  const availableSlots = selectedDate ? (monthAvailability[selectedDate] || []) : [];
 
   // If meeting is already scheduled, show confirmation
   if (state.meetingScheduled || success) {
@@ -349,58 +349,35 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
               >
                 {day.getDate()}
                 {hasAvailability && isCurrentMonth && (
-                  <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-yellow-500 rounded-full"></div>
+                  <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 rounded-full"></div>
                 )}
               </button>
             );
           })}
         </div>
 
-        {/* Time Slots */}
+        {/* Time Selection */}
         {selectedDate && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              <h4 className="font-medium">
-                Available times for {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </h4>
-            </div>
-            
+            <h4 className="font-medium">Available Times</h4>
             {availableSlots.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {availableSlots.map((slot) => (
                   <Button
                     key={slot.time}
                     variant={selectedTime === slot.time ? "default" : "outline"}
                     size="sm"
                     onClick={() => handleTimeSelect(slot.time)}
-                    className={`text-xs ${
-                      selectedTime === slot.time 
-                        ? 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500' 
-                        : 'border-yellow-300 text-black hover:bg-yellow-50'
-                    }`}
+                    className="flex items-center gap-2"
                   >
+                    <Clock className="h-3 w-3" />
                     {slot.time}
                   </Button>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-4">
-                <p className="text-sm text-gray-600">No available times for this date</p>
-              </div>
+              <p className="text-sm text-gray-500">No available times for this date</p>
             )}
-          </div>
-        )}
-
-        {/* Error Display */}
-        {error && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <p className="text-sm text-red-800">{error}</p>
           </div>
         )}
 
@@ -409,36 +386,35 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
           <div className="space-y-4">
             <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
               <p className="text-sm text-yellow-800">
-                <strong>Selected:</strong> {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
+                You're about to book a discovery call for:
+              </p>
+              <p className="font-semibold text-black mt-1">
+                {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
                   weekday: 'long',
+                  year: 'numeric',
                   month: 'long',
                   day: 'numeric'
                 })} at {selectedTime}
-              </p>
-              <p className="text-xs text-yellow-700 mt-1">
-                Duration: 15 minutes
               </p>
             </div>
             
             <Button
               onClick={handleBookMeeting}
               disabled={booking}
-              className="w-full bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500"
-              size="lg"
+              className="w-full bg-black text-white hover:bg-gray-800"
             >
-              {booking ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
-                  Booking Meeting...
-                </>
-              ) : (
-                'Book Discovery Call'
-              )}
+              {booking ? 'Booking...' : 'Book Discovery Call'}
             </Button>
           </div>
         )}
 
-
+        {/* Error Display */}
+        {error && (
+          <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-300 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
