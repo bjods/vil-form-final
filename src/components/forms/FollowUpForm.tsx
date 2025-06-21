@@ -373,7 +373,7 @@ const FollowUpForm: React.FC = () => {
   // Show loading if session is still loading
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading session...</p>
@@ -385,7 +385,7 @@ const FollowUpForm: React.FC = () => {
   // Thank you page - only show when meeting is booked and form is completed
   if (showThankYou) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="w-full max-w-2xl mx-auto">
           <Card className="h-full flex flex-col">
             <CardContent className="p-8 text-center">
@@ -435,7 +435,7 @@ const FollowUpForm: React.FC = () => {
   // Show loading if no pages are available yet
   if (pages.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading form...</p>
@@ -481,7 +481,7 @@ const FollowUpForm: React.FC = () => {
           }
         `}
       </style>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         <div className="max-w-2xl mx-auto p-4 py-8">
           {/* Current page content */}
           <Card className="h-full flex flex-col">
