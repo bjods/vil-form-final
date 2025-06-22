@@ -22,7 +22,7 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   
-  // Cache availability data for the entire month
+  // Real-time availability data (no caching)
   const [monthAvailability, setMonthAvailability] = useState<{ [date: string]: TimeSlot[] }>({});
   const [monthLoading, setMonthLoading] = useState(false);
 
@@ -86,9 +86,9 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
         return;
       }
       
-      console.log(`Fetching availability for ${bookableDates.length} dates in batch`);
+      console.log(`Fetching real-time availability for ${bookableDates.length} dates`);
       
-      // Use batch API to fetch all dates at once
+      // Fetch real-time data (no caching on server)
       const response = await fetch(`${getApiUrl('check-availability')}?dates=${bookableDates.join(',')}`, {
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
@@ -104,7 +104,7 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
       // Update state with all availability data
       setMonthAvailability(data.dates || {});
       
-      console.log(`Loaded availability for ${Object.keys(data.dates || {}).length} dates (${data.cached_count || 0} cached, ${data.fresh_count || 0} fresh)`);
+      console.log(`Loaded real-time availability for ${Object.keys(data.dates || {}).length} dates`);
       
     } catch (err) {
       console.error('Error fetching month availability:', err);
@@ -115,7 +115,7 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
     }
   };
 
-  // Handle date selection (now instant since data is cached)
+  // Handle date selection
   const handleDateSelect = (date: Date) => {
     if (!isDateBookable(date)) return;
     
@@ -161,7 +161,7 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
     setSelectedDate(null);
     setSelectedTime(null);
     setSuccess(false);
-    // Clear cached data when changing months
+    // Clear data when changing months
     setMonthAvailability({});
     
     // Clear meeting details when navigating
@@ -176,7 +176,7 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
     fetchMonthAvailability();
   }, [currentDate]);
 
-  // Get available slots for selected date from cached data
+  // Get available slots for selected date
   const availableSlots = selectedDate ? (monthAvailability[selectedDate] || []) : [];
 
   return (
