@@ -7,6 +7,7 @@ import { useFormStore } from '../store/formStore';
 
 interface TimeSlot {
   time: string;
+  staff_member?: string;
 }
 
 interface CalendarWidgetProps {
@@ -128,8 +129,13 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
   };
 
   // Handle time selection
-  const handleTimeSelect = (time: string) => {
+  const handleTimeSelect = (time: string, staffMember?: string) => {
     setSelectedTime(time);
+    // Store the staff member for this time slot (for use in booking)
+    if (staffMember) {
+      // We'll use this when booking to ensure we save the correct provider
+      setSelectedTime(`${time}|${staffMember}`);
+    }
   };
 
   // Book the meeting
@@ -143,6 +149,11 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
     setError(null);
 
     try {
+      // Extract time and staff member from selectedTime
+      const [time, staffMember] = selectedTime.includes('|') 
+        ? selectedTime.split('|') 
+        : [selectedTime, undefined];
+
       const response = await fetch(getApiUrl('book-meeting'), {
         method: 'POST',
         headers: {
@@ -152,7 +163,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
         body: JSON.stringify({
           session_id: state.sessionId,
           date: selectedDate,
-          time: selectedTime,
+          time: time,
         }),
       });
 
@@ -163,21 +174,24 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
 
       const data = await response.json();
       
+      // Extract the actual time (without staff member) for display
+      const displayTime = selectedTime.includes('|') ? selectedTime.split('|')[0] : selectedTime;
+      
       // The response structure is flat, not nested under 'meeting'
       // Update local state with the meeting details from the response
       if (data.success && data.data_sent?.meeting_details) {
         setMeetingDetails(
-          data.data_sent.meeting_details.provider || 'Staff Member',
+          data.data_sent.meeting_details.provider || staffMember || 'dom',
           data.data_sent.meeting_details.date || selectedDate,
-          data.data_sent.meeting_details.start_time || selectedTime,
+          data.data_sent.meeting_details.start_time || displayTime,
           data.data_sent.meeting_details.end_time || ''
         );
       } else {
         // Fallback if the response structure is different
         setMeetingDetails(
-          'Staff Member', // Default staff member
+          staffMember || 'dom', // Use the staff member from the selected slot
           selectedDate,
-          selectedTime,
+          displayTime,
           '' // End time will be calculated
         );
       }
@@ -366,11 +380,11 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
                 {availableSlots.map((slot) => (
                   <Button
                     key={slot.time}
-                    variant={selectedTime === slot.time ? "default" : "outline"}
+                    variant={selectedTime === slot.time || selectedTime === `${slot.time}|${slot.staff_member}` ? "default" : "outline"}
                     size="sm"
-                    onClick={() => handleTimeSelect(slot.time)}
+                    onClick={() => handleTimeSelect(slot.time, slot.staff_member)}
                     className={`text-xs ${
-                      selectedTime === slot.time 
+                      selectedTime === slot.time || selectedTime === `${slot.time}|${slot.staff_member}`
                         ? 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500' 
                         : 'border-yellow-300 text-black hover:bg-yellow-50'
                     }`}
@@ -404,7 +418,7 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
                   weekday: 'long',
                   month: 'long',
                   day: 'numeric'
-                })} at {selectedTime}
+                })} at {selectedTime.includes('|') ? selectedTime.split('|')[0] : selectedTime}
               </p>
               <p className="text-xs text-yellow-700 mt-1">
                 Duration: 15 minutes

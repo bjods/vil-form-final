@@ -7,6 +7,7 @@ import { useFormStore } from '../store/formStore';
 
 interface TimeSlot {
   time: string;
+  staff_member?: string;
 }
 
 interface AgentCalendarWidgetProps {
@@ -128,7 +129,7 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
   };
 
   // Handle time selection and IMMEDIATELY save to form store
-  const handleTimeSelect = (time: string) => {
+  const handleTimeSelect = (time: string, staffMember?: string) => {
     if (!selectedDate) return;
     
     setSelectedTime(time);
@@ -144,9 +145,8 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
     
     const endTime = calculateEndTime(time);
     
-    // DIRECTLY save to form store like the working CalendarWidget does
-    // Default to 'Staff Member' since we don't have staff assignment for agent form
-    setMeetingDetails('Staff Member', selectedDate, time, endTime);
+    // DIRECTLY save to form store with the actual staff member
+    setMeetingDetails(staffMember || 'dom', selectedDate, time, endTime);
     
     setSuccess(true);
   };
@@ -282,7 +282,7 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
                     key={slot.time}
                     variant={selectedTime === slot.time ? "default" : "outline"}
                     size="sm"
-                    onClick={() => handleTimeSelect(slot.time)}
+                    onClick={() => handleTimeSelect(slot.time, slot.staff_member)}
                     className={`text-xs ${
                       selectedTime === slot.time 
                         ? 'bg-yellow-500 hover:bg-yellow-600 text-black border-yellow-500' 
