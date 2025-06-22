@@ -60,6 +60,10 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     const initSession = async () => {
       console.log('🆕 Initializing fresh agent form session (no caching)');
       await initializeFreshSession();
+      // Set initial address value if it exists in state
+      if (state.address) {
+        setAddressInput(state.address);
+      }
     };
     initSession();
   }, []); // Empty dependency array - only run once on mount
@@ -123,16 +127,26 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
             if (place && place.formatted_address) {
               const address = place.formatted_address;
               setAddressInput(address);
-              setAddress(address, '', true); // Assume service area is valid for agent form
               
-              // Extract postal code if available
-              const postalCodeComponent = place.address_components?.find(
-                (component: any) => component.types.includes('postal_code')
-              );
-              if (postalCodeComponent) {
-                console.log('📮 Postal code found:', postalCodeComponent.long_name);
-                // You could set postal code here if needed
+              // Extract postal code from components
+              let postalCode = '';
+              
+              if (place.address_components) {
+                const postalCodeComponent = place.address_components.find(
+                  (component: any) => component.types.includes('postal_code')
+                );
+                if (postalCodeComponent) {
+                  postalCode = postalCodeComponent.long_name;
+                }
               }
+              
+              console.log('📍 Address from autocomplete:', address);
+              if (postalCode) {
+                console.log('📮 Postal code found:', postalCode);
+              }
+              
+              // Set address with postal code
+              setAddress(address, postalCode, true);
             }
           });
           
@@ -197,10 +211,8 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setAddressInput(value);
-    // Only update address in store if not using autocomplete
-    if (!autocompleteRef.current) {
-      setAddress(value, '', true);
-    }
+    // Always update address in store when typing
+    setAddress(value, '', true);
   };
 
   const handleSubmit = async () => {
@@ -494,7 +506,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
           onClick={handleSubmit}
           size="lg"
           className="w-full max-w-md"
-          disabled={state.isSubmitting || !state.personalInfo.firstName || !state.personalInfo.lastName || !state.personalInfo.email || !state.personalInfo.phone || !addressInput}
+          disabled={state.isSubmitting || !state.personalInfo.firstName || !state.personalInfo.lastName || !state.personalInfo.email || !state.personalInfo.phone || !state.address}
         >
           {state.isSubmitting ? 'Saving Lead...' : 'Save Lead'}
         </Button>
