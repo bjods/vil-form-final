@@ -34,6 +34,7 @@ const FollowUpForm: React.FC = () => {
   const [validationStates, setValidationStates] = useState<Record<string, boolean>>({});
   const [showThankYou, setShowThankYou] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [initialHasPhotos, setInitialHasPhotos] = useState<boolean | null>(null);
 
   // Initialize session on mount
   useEffect(() => {
@@ -68,6 +69,14 @@ const FollowUpForm: React.FC = () => {
 
   // Check if user has photos uploaded
   const hasPhotos = state.personalInfo.uploadedImages.length > 0;
+
+  // Set initial photos state once when session is loaded
+  useEffect(() => {
+    if (!isLoading && initialHasPhotos === null) {
+      setInitialHasPhotos(hasPhotos);
+      console.log('Initial photos state set:', hasPhotos);
+    }
+  }, [isLoading, hasPhotos, initialHasPhotos]);
 
   // Determine which services are selected - BULLETPROOF detection for Gravity Forms
   const hasMaintenanceServices = useMemo(() => {
@@ -189,8 +198,8 @@ const FollowUpForm: React.FC = () => {
       services: state.services 
     });
 
-    // Add photo upload page if user doesn't have photos
-    if (!hasPhotos) {
+    // Add photo upload page if user doesn't have photos (use initial state to prevent page from disappearing)
+    if (!initialHasPhotos) {
       pageList.push({
         id: 'photo-upload',
         title: 'Property Photos',
@@ -260,7 +269,7 @@ const FollowUpForm: React.FC = () => {
     console.log('Pages generated:', pageList.map(p => p.id));
 
     return pageList;
-  }, [hasMaintenanceServices, hasProjectServices, hasPhotos, state.services]);
+  }, [hasMaintenanceServices, hasProjectServices, initialHasPhotos, state.services]);
 
   // Validate services and provide helpful feedback - NO REDIRECTS
   useEffect(() => {
@@ -432,8 +441,8 @@ const FollowUpForm: React.FC = () => {
     );
   }
 
-  // Show loading if no pages are available yet
-  if (pages.length === 0) {
+  // Show loading if no pages are available yet or initial photos state not set
+  if (pages.length === 0 || initialHasPhotos === null) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="text-center">
