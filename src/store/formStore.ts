@@ -26,7 +26,7 @@ interface FormStore {
   setPersonalInfo: (info: Partial<FormState['personalInfo']>) => void;
   requestUploadLink: () => Promise<string | null>;
   submitForm: () => Promise<boolean>;
-  submitAgentForm: () => Promise<boolean>;
+  submitAgentForm: (leadInputtedBy: string) => Promise<boolean>;
   setMeetingBooked: (booked: boolean) => void;
   setEmbedData: (embedData: FormState['embedData']) => void;
   resetForm: () => void;
@@ -456,7 +456,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
     }
   },
 
-  submitAgentForm: async () => {
+  submitAgentForm: async (leadInputtedBy: string) => {
     const { state } = get();
     
     console.log('🚀 Starting agent form submission via edge function...');
@@ -467,6 +467,7 @@ export const useFormStore = create<FormStore>((set, get) => ({
       meetingStartTime: state.meetingStartTime,
       meetingEndTime: state.meetingEndTime
     });
+    console.log('👤 Lead inputted by:', leadInputtedBy);
     
     // Prevent multiple submissions
     if (state.isSubmitting) {
@@ -521,7 +522,8 @@ export const useFormStore = create<FormStore>((set, get) => ({
             meetingStaffMember: state.meetingStaffMember,
             meetingDate: state.meetingDate,
             meetingStartTime: state.meetingStartTime,
-            meetingEndTime: state.meetingEndTime
+            meetingEndTime: state.meetingEndTime,
+            leadInputtedBy: leadInputtedBy
           }
         }),
       });

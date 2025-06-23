@@ -3,6 +3,8 @@ import { useDropzone } from 'react-dropzone';
 import { Progress } from './ui/progress';
 import { Camera, ImagePlus, Trash2, X } from 'lucide-react';
 import { Button } from './ui/button';
+import { supabase } from '../lib/supabase';
+import { useFormStore } from '../store/formStore';
 
 interface FileUploadProps {
   onUpload: (urls: string[]) => void;
@@ -25,22 +27,34 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
+  const { state } = useFormStore();
+  
   const uploadFile = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', 'property-uploads');
-
     try {
-      const response = await fetch(
-        'https://api.cloudinary.com/v1_1/dkjm9uscp/upload',
-        {
-          method: 'POST',
-          body: formData
-        }
-      );
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `${state.sessionId || 'no-session'}/${timestamp}-${randomString}.${fileExtension}`;
 
-      const data = await response.json();
-      return data.secure_url;
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('property-photos')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) {
+        throw new Error(`Upload failed: ${error.message}`);
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('property-photos')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
     } catch (error) {
       console.error('Upload failed:', error);
       throw error;

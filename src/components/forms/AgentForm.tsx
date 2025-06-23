@@ -6,9 +6,10 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { CheckCircle2, Circle, Save, User, DollarSign, FileText, Calendar, Phone, MapPin } from 'lucide-react';
+import { CheckCircle2, Circle, Save, User, DollarSign, FileText, Calendar, Phone, MapPin, Camera } from 'lucide-react';
 import { services } from '../../data/services';
 import AgentCalendarWidget from '../AgentCalendarWidget';
+import FileUpload from '../FileUpload';
 
 // Declare Google Maps types
 declare global {
@@ -48,6 +49,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   const [totalBudget, setTotalBudget] = useState<number>(0);
   const [notes, setNotesLocal] = useState('');
   const [addressInput, setAddressInput] = useState('');
+  const [leadInputtedBy, setLeadInputtedBy] = useState('');
   // Calendar selection is now handled directly by AgentCalendarWidget via form store
   
   // Google Maps autocomplete refs
@@ -218,7 +220,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
   const handleSubmit = async () => {
     try {
       // No need to pass calendar data - it's already in the form store
-      const success = await submitAgentForm();
+      const success = await submitAgentForm(leadInputtedBy);
       if (success) {
         setIsSubmitted(true);
       } else {
@@ -242,6 +244,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     setTotalBudget(0);
     setNotesLocal('');
     setAddressInput('');
+    setLeadInputtedBy('');
     
     // Initialize fresh session (no caching)
     await initializeFreshSession();
@@ -392,6 +395,20 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
               </SelectContent>
             </Select>
           </div>
+          
+          <div>
+            <Label htmlFor="leadInputtedBy">Lead Inputted By *</Label>
+            <Input
+              id="leadInputtedBy"
+              value={leadInputtedBy}
+              onChange={(e) => setLeadInputtedBy(e.target.value)}
+              placeholder="Enter staff member name"
+              required
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              Name of the staff member entering this lead
+            </p>
+          </div>
         </CardContent>
       </Card>
 
@@ -484,6 +501,25 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
         </CardContent>
       </Card>
 
+      {/* Photo Upload */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Camera className="w-5 h-5" />
+            Property Photos (Optional)
+          </CardTitle>
+          <CardDescription>
+            Upload photos of the property to help with consultation preparation
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FileUpload
+            onUpload={(urls) => setPersonalInfo({ uploadedImages: urls })}
+            maxFiles={10}
+          />
+        </CardContent>
+      </Card>
+
       {/* Calendar Booking */}
       <Card>
         <CardHeader>
@@ -506,7 +542,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
           onClick={handleSubmit}
           size="lg"
           className="w-full max-w-md"
-          disabled={state.isSubmitting || !state.personalInfo.firstName || !state.personalInfo.lastName || !state.personalInfo.email || !state.personalInfo.phone || !state.address}
+          disabled={state.isSubmitting || !state.personalInfo.firstName || !state.personalInfo.lastName || !state.personalInfo.email || !state.personalInfo.phone || !state.address || !leadInputtedBy}
         >
           {state.isSubmitting ? 'Saving Lead...' : 'Save Lead'}
         </Button>
