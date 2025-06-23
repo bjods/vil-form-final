@@ -266,7 +266,15 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
               })}
             </p>
             <p className="font-semibold text-black">
-              {state.meetingStartTime} - {state.meetingEndTime}
+              {(() => {
+                const formatTime = (time: string) => {
+                  const [hours, minutes] = time.split(':').map(Number);
+                  const period = hours >= 12 ? 'PM' : 'AM';
+                  const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+                  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+                };
+                return `${formatTime(state.meetingStartTime)} - ${formatTime(state.meetingEndTime)}`;
+              })()}
             </p>
           </div>
           <p className="text-sm text-gray-600">
@@ -387,7 +395,12 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
                         : 'border-yellow-300 text-black hover:bg-yellow-50'
                     }`}
                   >
-                    {slot.time}
+                    {(() => {
+                      const [hours, minutes] = slot.time.split(':').map(Number);
+                      const period = hours >= 12 ? 'PM' : 'AM';
+                      const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+                      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+                    })()}
                   </Button>
                 ))}
               </div>
@@ -416,7 +429,13 @@ export const CalendarWidget: React.FC<CalendarWidgetProps> = ({ onMeetingBooked 
                   weekday: 'long',
                   month: 'long',
                   day: 'numeric'
-                })} at {selectedTime.includes('|') ? selectedTime.split('|')[0] : selectedTime}
+                })} at {(() => {
+                  const time = selectedTime.includes('|') ? selectedTime.split('|')[0] : selectedTime;
+                  const [hours, minutes] = time.split(':').map(Number);
+                  const period = hours >= 12 ? 'PM' : 'AM';
+                  const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+                  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+                })()}
               </p>
               <p className="text-xs text-yellow-700 mt-1">
                 Duration: 15 minutes

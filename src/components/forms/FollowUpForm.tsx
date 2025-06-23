@@ -137,27 +137,31 @@ const FollowUpForm: React.FC = () => {
 
   // Photo Upload Component
   const PhotoUploadComponent: React.FC<{ onValidationChange: (isValid: boolean) => void }> = ({ onValidationChange }) => {
-    const { setPersonalInfo } = useFormStore();
+    const { state: formState, setPersonalInfo } = useFormStore();
     
     const handleUpload = async (urls: string[]) => {
       console.log('Photos uploaded:', urls);
-      // Update the form store with the uploaded photo URLs
-      setPersonalInfo({ uploadedImages: urls });
+      // Append new URLs to existing ones
+      const existingImages = formState.personalInfo.uploadedImages || [];
+      const combinedImages = [...existingImages, ...urls];
+      
+      // Update the form store with the combined photo URLs
+      setPersonalInfo({ uploadedImages: combinedImages });
       
       // Update validation - photos are optional, so always valid
       onValidationChange(true);
       
       // Also update the session in the database immediately
-      if (state.sessionId) {
+      if (formState.sessionId) {
         try {
           await supabase
             .from('form_sessions')
             .update({
-              photo_urls: urls,
-              photos_uploaded: urls.length > 0,
+              photo_urls: combinedImages,
+              photos_uploaded: combinedImages.length > 0,
               updated_at: new Date().toISOString()
             })
-            .eq('id', state.sessionId);
+            .eq('id', formState.sessionId);
           console.log('Photos updated in database');
         } catch (error) {
           console.error('Error updating photos in database:', error);

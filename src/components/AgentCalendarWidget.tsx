@@ -289,7 +289,12 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
                         : 'border-yellow-300 text-black hover:bg-yellow-50'
                     }`}
                   >
-                    {slot.time}
+                    {(() => {
+                      const [hours, minutes] = slot.time.split(':').map(Number);
+                      const period = hours >= 12 ? 'PM' : 'AM';
+                      const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+                      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+                    })()}
                   </Button>
                 ))}
               </div>
@@ -317,7 +322,12 @@ export const AgentCalendarWidget: React.FC<AgentCalendarWidgetProps> = () => {
                 weekday: 'long',
                 month: 'long',
                 day: 'numeric'
-              })} at {selectedTime}
+              })} at {(() => {
+                const [hours, minutes] = selectedTime.split(':').map(Number);
+                const period = hours >= 12 ? 'PM' : 'AM';
+                const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+                return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+              })()}
             </p>
             <p className="text-xs text-yellow-700 mt-1">
               Duration: 15 minutes • This will be saved when you submit the lead
