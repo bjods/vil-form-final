@@ -386,7 +386,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
               <SelectTrigger>
                 <SelectValue placeholder="Select referral source" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[200px] overflow-y-auto">
                 {referralSources.map((source) => (
                   <SelectItem key={source} value={source}>
                     {source}
