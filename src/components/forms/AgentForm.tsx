@@ -204,10 +204,8 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
     const budget = Number(value) || 0;
     setTotalBudget(budget);
     
-    // Set budget for all selected services
-    state.services.forEach(serviceId => {
-      setBudget(serviceId, budget);
-    });
+    // Don't set individual service budgets for agent form
+    // We'll pass total budget directly when submitting
   };
 
   const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -219,8 +217,8 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
 
   const handleSubmit = async () => {
     try {
-      // No need to pass calendar data - it's already in the form store
-      const success = await submitAgentForm(leadInputtedBy);
+      // Pass total budget along with lead inputted by
+      const success = await submitAgentForm(leadInputtedBy, totalBudget);
       if (success) {
         setIsSubmitted(true);
       } else {
