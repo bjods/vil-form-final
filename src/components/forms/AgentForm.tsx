@@ -158,7 +158,7 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
         console.error('❌ Error initializing Google Maps autocomplete:', error);
       }
     }
-  }, [isGoogleMapsLoaded, setAddress]);
+  }, [isGoogleMapsLoaded, setAddress, isSubmitted]); // Added isSubmitted to reinitialize when form resets
 
   // Update notes in store when local notes change
   useEffect(() => {
@@ -235,6 +235,14 @@ const AgentForm: React.FC<AgentFormProps> = ({ sessionId }) => {
 
   const handleStartNew = async () => {
     console.log('🔄 Starting new agent form...');
+    
+    // Clean up Google Maps autocomplete
+    if (autocompleteRef.current) {
+      console.log('🗺️ Cleaning up Google Maps autocomplete...');
+      // Remove all listeners from the old autocomplete instance
+      google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      autocompleteRef.current = null;
+    }
     
     // Wipe all browser data first
     wipeBrowserData();
